@@ -1,0 +1,675 @@
+<!-- TEMPLATE. The data below is the Ana Vodafone run, kept so the page renders
+     while you work. Replace: the <title>, the header, the five tiles, the two
+     tables, and the MONTHS / TRAINS / KINDS arrays near the top of the script.
+     Everything else - layout, palette, chart code, theme handling - stays. -->
+<title>Ana Vodafone Reviews Analysis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;450;500;600&display=swap">
+
+<style>
+  /* Light is the complete palette. Dark redefines only these tokens, twice: once
+     for prefers-color-scheme (guarded so an explicit light choice wins), once for
+     the explicit dark stamp. No component colour is declared inside those blocks.
+     Series colours validated for CVD separation in both modes. */
+  :root {
+    --ground:#fafbfb; --surface:#ffffff; --sunk:#f2f5f4;
+    --ink:#141a19; --body:#33403e; --muted:#5f6d6b; --faint:#8b9997;
+    --line:#e0e7e5; --line-firm:#c8d3d1;
+    --teal:#0d9488; --teal-soft:#e0f2ef;
+    --red:#b4232b;  --red-soft:#fbe9e8;
+    --amber:#8a6008; --amber-soft:#fbf0dc;
+    --shadow:0 1px 2px rgba(20,26,25,.05), 0 8px 24px -12px rgba(20,26,25,.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#101413; --surface:#171c1b; --sunk:#1d2423;
+      --ink:#eef3f2; --body:#c3cecc; --muted:#97a5a3; --faint:#6f7d7b;
+      --line:#2a3332; --line-firm:#3c4746;
+      --teal:#17a898; --teal-soft:#0d2b28;
+      --red:#e0605c;  --red-soft:#2e1817;
+      --amber:#d69a3a; --amber-soft:#2b2210;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#101413; --surface:#171c1b; --sunk:#1d2423;
+    --ink:#eef3f2; --body:#c3cecc; --muted:#97a5a3; --faint:#6f7d7b;
+    --line:#2a3332; --line-firm:#3c4746;
+    --teal:#17a898; --teal-soft:#0d2b28;
+    --red:#e0605c;  --red-soft:#2e1817;
+    --amber:#d69a3a; --amber-soft:#2b2210;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--ground); color:var(--body);
+    font:400 16px/1.6 "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page { max-width:1160px; margin:0 auto; padding:0 24px 80px; }
+
+  h1,h2,h3 { color:var(--ink); margin:0; text-wrap:balance; }
+  h1 { font-family:Newsreader,Georgia,serif; font-weight:500; font-size:clamp(34px,5.4vw,54px); line-height:1.05; letter-spacing:-.02em; }
+  h2 { font-family:Newsreader,Georgia,serif; font-weight:500; font-size:23px; line-height:1.25; letter-spacing:-.01em; }
+  h3 { font-size:15px; font-weight:600; }
+  p { margin:0; }
+  strong { color:var(--ink); font-weight:600; }
+
+  .mono { font-family:"IBM Plex Mono",ui-monospace,monospace; }
+  .eyebrow {
+    font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:11px; font-weight:500;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+  }
+  .note { font-size:13.5px; line-height:1.55; color:var(--muted); }
+  .take { font-size:14.5px; line-height:1.5; color:var(--body); margin-top:4px; }
+  .take b { color:var(--ink); font-weight:600; }
+
+  /* ---- header ---- */
+  header { padding:64px 0 26px; display:flex; flex-direction:column; gap:16px; }
+  header .lede { font-family:Newsreader,Georgia,serif; font-size:clamp(18px,2.2vw,22px); line-height:1.45; max-width:720px; color:var(--body); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px 22px; }
+  .meta span { font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:11.5px; letter-spacing:.05em; color:var(--muted); }
+
+  /* ---- tiles ---- */
+  .tiles {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(158px,1fr)); gap:1px;
+    background:var(--line); border:1px solid var(--line); border-radius:10px; overflow:hidden;
+  }
+  .tile { background:var(--surface); padding:16px 18px; }
+  .tile b {
+    display:block; font-family:Newsreader,Georgia,serif; font-weight:500; font-size:32px;
+    line-height:1.1; letter-spacing:-.02em; color:var(--ink); font-variant-numeric:tabular-nums;
+  }
+  .tile b.down { color:var(--red); }
+  .tile b.good { color:var(--teal); }
+  .tile span { display:block; margin-top:4px; font-size:12.5px; line-height:1.35; color:var(--muted); }
+
+  /* ---- panels & grid ---- */
+  .panel { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:20px 22px; box-shadow:var(--shadow); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(440px,1fr)); gap:14px; }
+  .panel-head { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:14px; }
+  .panel-head .eyebrow { flex:none; padding-top:3px; }
+  section { padding-top:44px; }
+  .sec-title { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:16px; }
+
+  /* ---- charts ---- */
+  figure { margin:0; }
+  .chart-wrap { position:relative; }
+  svg { display:block; width:100%; height:auto; overflow:visible; }
+  .legend { display:flex; flex-wrap:wrap; gap:16px; margin-bottom:12px; }
+  .key { display:inline-flex; align-items:center; gap:7px; font-size:12.5px; color:var(--body); }
+  .key i { width:20px; height:3px; border-radius:2px; flex:none; }
+  .key i.dot { width:9px; height:9px; border-radius:50%; }
+  .tip {
+    position:absolute; pointer-events:none; opacity:0; transform:translate(-50%,-100%);
+    background:var(--ink); color:var(--ground); padding:7px 10px; border-radius:6px;
+    font-size:12px; line-height:1.45; white-space:nowrap; z-index:5;
+    font-variant-numeric:tabular-nums; transition:opacity .1s;
+  }
+  .tip b { color:var(--ground); font-weight:600; }
+  .tip.on { opacity:1; }
+
+  /* ---- small multiples ---- */
+  .sparks { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .spark { background:var(--surface); padding:16px 18px 14px; }
+  .spark h3 { font-size:13px; font-weight:500; color:var(--body); margin-bottom:4px; }
+  .spark .val { font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:17px; line-height:1.25; color:var(--muted); margin-bottom:10px; font-variant-numeric:tabular-nums; }
+  .spark .val b { color:var(--red); font-weight:500; }
+  .spark .val b.flat { color:var(--muted); }
+
+  /* ---- table ---- */
+  .scroll { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:460px; }
+  th {
+    text-align:left; font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:10px;
+    font-weight:500; letter-spacing:.1em; text-transform:uppercase; color:var(--muted);
+    padding:0 12px 8px 0; border-bottom:1px solid var(--line-firm);
+  }
+  td { padding:9px 12px 9px 0; border-bottom:1px solid var(--line); vertical-align:baseline; }
+  td:first-child { color:var(--ink); }
+  th.n, td.n { text-align:right; font-variant-numeric:tabular-nums; padding-right:0; }
+  tr.accent td { background:var(--sunk); }
+  .down { color:var(--red); font-weight:500; }
+
+  /* ---- caveat list ---- */
+  .stamp {
+    display:inline-flex; align-items:center; gap:6px; flex:none;
+    font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:10px; font-weight:500;
+    letter-spacing:.1em; text-transform:uppercase; padding:3px 8px; border-radius:3px; border:1px solid;
+  }
+  .stamp::before { content:""; width:5px; height:5px; border-radius:50%; background:currentColor; }
+  .stamp.measured { color:var(--teal); border-color:var(--teal); background:var(--teal-soft); }
+  .stamp.open { color:var(--amber); border-color:var(--amber); background:var(--amber-soft); }
+  ul.tight, ol.tight { margin:0; padding-left:19px; }
+  ul.tight li, ol.tight li { margin-top:9px; font-size:14px; line-height:1.5; }
+  ul.tight li::marker, ol.tight li::marker { color:var(--faint); font-variant-numeric:tabular-nums; }
+  hr.rule { border:0; border-top:1px solid var(--line); margin:0; }
+</style>
+
+<div class="page">
+
+  <header>
+    <div class="eyebrow">Ana Vodafone · Google Play &amp; App Store · 10 Feb – 8 Aug 2026</div>
+    <h1>App Reviews Analysis</h1>
+    <p class="lede">The store shows 4.09 stars. Among reviews that actually say something, the
+      score is 2.85 and falling. One release in April explains most of the fall.</p>
+    <div class="meta">
+      <span>34,461 reviews collected</span>
+      <span>7,929 with real text</span>
+      <span>95% Arabic</span>
+    </div>
+  </header>
+
+  <div class="tiles">
+    <div class="tile"><b class="good">4.09</b><span>Google Play, every review</span></div>
+    <div class="tile"><b class="down">2.85</b><span>Google Play, written reviews only</span></div>
+    <div class="tile"><b class="down">1.54</b><span>App Store — never merge the two</span></div>
+    <div class="tile"><b>52%</b><span>of written reviews name no problem</span></div>
+    <div class="tile"><b class="mono down" style="font-size:24px;padding-top:6px">2026.4.3</b><span>the release where it breaks</span></div>
+  </div>
+
+  <section>
+    <div class="sec-title">
+      <h2>The score is two different numbers</h2>
+      <span class="stamp measured">Measured</span>
+    </div>
+    <div class="grid">
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h3>Every review vs. reviews with text</h3>
+            <p class="take">The gap <b>widens every month</b>. Over half of Play reviews are one
+              word — taps on the in-app rating prompt, not opinions.</p>
+          </div>
+        </div>
+        <div class="legend">
+          <span class="key"><i style="background:var(--teal)"></i>All reviews</span>
+          <span class="key"><i style="background:var(--red)"></i>Written reviews only</span>
+        </div>
+        <figure class="chart-wrap">
+          <svg id="lines" viewBox="0 0 700 300" role="img" aria-label="Monthly average rating, all reviews against written reviews only, February to August 2026"></svg>
+          <div class="tip" id="lines-tip"></div>
+        </figure>
+        <p class="note" style="margin-top:10px">August is 8 days only.</p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h3>Score by release</h3>
+            <p class="take">Every build before <b>2026.4.3</b> scores 3.2–3.4. Every build from it
+              onward scores 1.9–2.3. <b>No exceptions on either side.</b></p>
+          </div>
+        </div>
+        <figure class="chart-wrap">
+          <svg id="trains" viewBox="0 0 700 320" role="img" aria-label="Average rating by monthly release train, 2026.1 to 2026.7, with one-star share labelled under each bar"></svg>
+          <div class="tip" id="trains-tip"></div>
+        </figure>
+        <p class="note" style="margin-top:10px">2026.4 straddles the break: 2026.4.1 scores 3.42, 2026.4.3 scores 2.20.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-title">
+      <h2>What kind of trouble people report</h2>
+      <span class="stamp measured">Measured</span>
+    </div>
+    <div class="grid">
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h3>Volume, and how angry each one is</h3>
+            <p class="take">Reliability is the biggest. <b>Billing is the angriest</b> — nearly the
+              same score, more one-star reviews, and it falls hardest at the release.</p>
+          </div>
+        </div>
+        <figure class="chart-wrap">
+          <svg id="bars" viewBox="0 0 700 372" role="img" aria-label="Review counts for seven kinds of problem, with average rating and one-star share"></svg>
+          <div class="tip" id="bars-tip"></div>
+        </figure>
+        <p class="note" style="margin-top:10px">Counts overlap — a review can be in several rows.
+          Never add them.</p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h3>Before and after 2026.4.3</h3>
+            <p class="take"><b>Every kind got worse. No exceptions.</b> Even people politely asking
+              for features dropped nearly a full star.</p>
+          </div>
+        </div>
+        <div class="legend">
+          <span class="key"><i class="dot" style="background:var(--teal)"></i>Before</span>
+          <span class="key"><i class="dot" style="background:var(--red)"></i>After</span>
+        </div>
+        <figure class="chart-wrap">
+          <svg id="dumbbell" viewBox="0 0 700 344" role="img" aria-label="Average rating before and after release 2026.4.3 for seven kinds of problem"></svg>
+          <div class="tip" id="db-tip"></div>
+        </figure>
+        <p class="note" style="margin-top:10px">Not a randomised test — fast updaters may differ from slow ones.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-title">
+      <h2>Each kind, release by release</h2>
+      <span class="stamp measured">Measured</span>
+    </div>
+    <p class="take" style="max-width:720px;margin-bottom:16px">Grey line is all written reviews, for
+      comparison. <b>"The latest update" is the only flat one</b> — it attaches to whichever build is
+      newest, so it is always unhappy and never points at one.</p>
+    <div class="chart-wrap">
+      <div class="sparks" id="sparks"></div>
+      <div class="tip" id="sparks-tip"></div>
+    </div>
+    <p class="note" style="margin-top:12px">Hover any point to read its release number and score.
+      A break in a line means too few reviews on that release to score. 2026.1 through
+      2026.7, left to right.</p>
+  </section>
+
+  <section>
+    <div class="sec-title">
+      <h2>How far to trust each number</h2>
+      <span class="stamp open">Read before acting</span>
+    </div>
+    <div class="grid">
+
+      <div class="panel">
+        <h3 style="margin-bottom:12px">The counts were checked a second way</h3>
+        <div class="scroll">
+          <table>
+            <thead><tr><th>Kind</th><th class="n">Grouped by computer</th><th class="n">Found by searching</th></tr></thead>
+            <tbody>
+              <tr class="accent"><td>Customer support</td><td class="n">528</td><td class="n">529</td></tr>
+              <tr><td>Reliability &amp; bugs</td><td class="n">852</td><td class="n">600</td></tr>
+              <tr><td>Onboarding &amp; login</td><td class="n">609</td><td class="n">362</td></tr>
+              <tr><td>"The latest update"</td><td class="n">423</td><td class="n">777</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note" style="margin-top:12px">Two methods sharing nothing: one grouped reviews by
+          similarity with no word list, the other searched for words chosen by hand.
+          <strong>Customer support landed one review apart</strong> — that count is solid. Where they
+          disagree, take the smaller number.</p>
+      </div>
+
+      <div class="panel">
+        <h3 style="margin-bottom:12px">What this channel cannot see</h3>
+        <ul class="tight">
+          <li><strong>Usability.</strong> 145 reviews, and that is a floor. People muddle through and
+            blame themselves. Settle it with drop-off by screen, not reviews.</li>
+          <li><strong>Which device.</strong> Nobody writes "on Android 9". Use the store split
+            instead — iOS 1.54 against Android 4.09.</li>
+          <li><strong>What people want.</strong> Feature requests come only from those who stayed.
+            Anyone who needed something missing and left is invisible.</li>
+          <li><strong>A bug from a decision.</strong> The app is mobile-data-only <em>by design</em>.
+            253 reviews read as a defect and are not one.</li>
+          <li><strong>Whether a charge was wrong.</strong> 831 reviews say a customer believes they
+            were. Only billing records say if they were right.</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-title">
+      <h2>Take these three to analytics</h2>
+      <span class="stamp open">Open questions</span>
+    </div>
+    <div class="grid">
+      <div class="panel">
+        <div class="eyebrow" style="margin-bottom:8px">Question 1</div>
+        <h3 style="margin-bottom:8px">Did 2026.4.3 break something, or did the audience change?</h3>
+        <p class="take">Compare crash-free rate and funnel completion for <span class="mono">2026.4.2</span>
+          users against <span class="mono">2026.4.3</span> users. <b>Degraded funnels mean the release.
+          Flat funnels mean the audience.</b> Reviews cannot separate these — network complaints rose
+          28 points, and an app release cannot degrade a mobile network.</p>
+      </div>
+      <div class="panel">
+        <div class="eyebrow" style="margin-bottom:8px">Question 2</div>
+        <h3 style="margin-bottom:8px">How many people cannot log in at all?</h3>
+        <p class="take">17 reviews describe one deadlock: the password <b>requires English digits to
+          set</b>, then <b>types Arabic digits at login</b>, so it can never match. Present since
+          February, across ten versions — older than the release problem. Check login failure rate and
+          repeat password resets.</p>
+      </div>
+      <div class="panel">
+        <div class="eyebrow" style="margin-bottom:8px">Question 3</div>
+        <h3 style="margin-bottom:8px">Is the money complaint real?</h3>
+        <p class="take">Billing one-star share went from 64% to <b>85%</b> after the release — the
+          highest figure in this dataset. Check unexpected-charge disputes and wallet transaction
+          failures by app version.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-title">
+      <h2>How the areas were made</h2>
+      <span class="stamp measured">Method</span>
+    </div>
+    <div class="grid">
+
+      <div class="panel">
+        <h3 style="margin-bottom:12px">Four steps</h3>
+        <ol class="tight" style="padding-left:20px">
+          <li><strong>Collected</strong> 34,461 reviews from both stores over six months. 7,929 had
+            more than a few words; the rest were rating-prompt taps.</li>
+          <li><strong>A computer grouped them into 32 piles</strong> by shared words. It was given no
+            word list and knows nothing about the app — it only sees which reviews sound alike.</li>
+          <li><strong>A person read all 32 and named them.</strong> Piles given the same name merged.
+            About 8 were clean topics; the rest were emotion, vague complaints, or split by language.</li>
+          <li><strong>Then searched by keyword</strong> for each named area, to catch themes too
+            small for a pile.</li>
+        </ol>
+      </div>
+
+      <div class="panel">
+        <h3 style="margin-bottom:12px">Why 32 piles for 7 areas</h3>
+        <p class="take"><b>Deliberately more piles than areas.</b> Merging two piles is typing the
+          same name twice. Splitting one is impossible — so the setting is always too many, never too
+          few.</p>
+        <p class="take" style="margin-top:12px">Tested it: rerunning with only 10 piles did not
+          remove the noise. It jammed <em>login</em> together with <em>update</em>, and
+          <em>balance</em> with <em>bundles</em>. <b>Fewer piles lose the topics, not the noise.</b></p>
+        <p class="take" style="margin-top:12px">The keyword search exists because a pile needs about
+          240 reviews to survive. <b>Accessibility had 4.</b> Grouping alone would never have shown it.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <hr class="rule" style="margin-top:44px">
+  <p class="note" style="margin-top:18px">
+    Apple caps its feed at ~100 reviews, so App Store figures cover 26 Mar – 7 Aug only and are never
+    merged with Play. Every count above is against the <strong>7,929 written reviews</strong>, never
+    the 34,461 total — roughly one review in nine describes anything at all.
+  </p>
+
+</div>
+
+<script>
+(() => {
+  const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (n, a = {}) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); return e; };
+  const txt = (s, a) => { const t = el("text", a); t.textContent = s; return t; };
+  const MONO = "IBM Plex Mono, monospace";
+
+  const MONTHS = [
+    { m:"Feb", all:4.14, w:3.02, nA:7782,  nW:1598 },
+    { m:"Mar", all:4.31, w:3.32, nA:10147, nW:1894 },
+    { m:"Apr", all:4.37, w:3.39, nA:7999,  nW:1402 },
+    { m:"May", all:3.91, w:2.54, nA:2604,  nW:697  },
+    { m:"Jun", all:3.63, w:2.33, nA:1889,  nW:619  },
+    { m:"Jul", all:3.10, w:1.99, nA:3519,  nW:1487 },
+    { m:"Aug", all:3.61, w:2.33, nA:421,   nW:149  },
+  ];
+
+  const TRAINS = [
+    { v:"2026.1", avg:3.23, one:35, n:421  },
+    { v:"2026.2", avg:3.23, one:36, n:1808 },
+    { v:"2026.3", avg:3.43, one:32, n:1358 },
+    { v:"2026.4", avg:2.96, one:43, n:1029 },
+    { v:"2026.5", avg:2.25, one:61, n:293  },
+    { v:"2026.6", avg:2.02, one:67, n:391  },
+    { v:"2026.7", avg:1.97, one:69, n:1089 },
+  ];
+
+  const KINDS = [
+    { name:"Reliability & bugs",   n:1042, avg:1.81, one:70, b:1.98, a:1.63, b1:64, a1:76, nb:506, na:388,
+      trail:[1.94,2.01,1.95,2.06,1.43,1.68,1.61] },
+    { name:"Billing & trust",      n:831,  avg:1.88, one:73, b:2.16, a:1.48, b1:64, a1:85, nb:431, na:273,
+      trail:[2.38,2.07,2.38,1.93,1.23,1.26,1.54] },
+    { name:"Customer support",     n:664,  avg:1.92, one:73, b:2.08, a:1.70, b1:69, a1:78, nb:340, na:230,
+      trail:[2.13,2.06,2.28,1.80,1.76,1.68,1.67] },
+    { name:"Onboarding & login",   n:573,  avg:2.11, one:61, b:2.41, a:1.84, b1:52, a1:70, nb:274, na:204,
+      trail:[null,2.24,2.57,2.33,null,2.05,1.78] },
+    { name:"Feature requests",     n:372,  avg:3.24, one:33, b:3.54, a:2.67, b1:27, a1:46, nb:227, na:101,
+      trail:[3.59,3.46,3.42,3.31,2.77,null,2.28] },
+    { name:"Platform & device",    n:213,  avg:2.44, one:57, b:2.82, a:1.74, b1:49, a1:74, nb:108, na:61,
+      trail:[null,2.73,2.61,2.30,null,null,1.89] },
+    { name:"Usability & navigation", n:145, avg:1.98, one:66, b:2.26, a:1.76, b1:58, a1:71, nb:76, na:51,
+      trail:[null,2.52,1.54,2.55,null,null,1.62] },
+  ];
+
+  const UPDATE_TRAIL = [1.86,2.18,2.14,2.09,2.27,1.84,1.88];
+  const ALL_TRAIL    = [3.23,3.23,3.43,2.96,2.25,2.02,1.97];
+
+  /* ---------------- monthly lines ---------------- */
+  function drawLines() {
+    const svg = document.getElementById("lines"), tip = document.getElementById("lines-tip");
+    svg.textContent = "";
+    // Numbers are set at double the usual chart size so the page reads from a
+    // distance in a meeting. Every margin below is sized for that, not the default.
+    const W=700,H=300,L=52,R=16,T=16,B=44;
+    const x = i => L + i*(W-L-R)/(MONTHS.length-1);
+    const y = v => T + ((4.6-v)/3.2)*(H-T-B);
+
+    for (let g=2; g<=4.5; g+=0.5) {
+      svg.appendChild(el("line",{x1:L,x2:W-R,y1:y(g),y2:y(g),stroke:css("--line"),"stroke-width":1}));
+      svg.appendChild(txt(g.toFixed(1),{x:L-10,y:y(g)+7,"text-anchor":"end",fill:css("--faint"),"font-size":17,"font-family":MONO}));
+    }
+    const area = MONTHS.map((d,i)=>`${x(i)},${y(d.all)}`).join(" ") + " " +
+                 MONTHS.map((d,i)=>`${x(MONTHS.length-1-i)},${y(MONTHS[MONTHS.length-1-i].w)}`).join(" ");
+    svg.appendChild(el("polygon",{points:area,fill:css("--red-soft"),opacity:.75}));
+
+    for (const s of [{k:"all",c:"--teal"},{k:"w",c:"--red"}]) {
+      svg.appendChild(el("polyline",{points:MONTHS.map((d,i)=>`${x(i)},${y(d[s.k])}`).join(" "),
+        fill:"none",stroke:css(s.c),"stroke-width":2,"stroke-linejoin":"round","stroke-linecap":"round"}));
+      MONTHS.forEach((d,i)=>svg.appendChild(el("circle",{cx:x(i),cy:y(d[s.k]),r:5,
+        fill:css(s.c),stroke:css("--surface"),"stroke-width":2})));
+    }
+    MONTHS.forEach((d,i)=>{
+      svg.appendChild(txt(d.m,{x:x(i),y:H-18,"text-anchor":"middle",fill:css("--muted"),"font-size":17,"font-family":MONO}));
+      const hit = el("rect",{x:x(i)-24,y:T,width:48,height:H-T-B,fill:"transparent"});
+      hit.addEventListener("mousemove",ev=>{
+        const r=svg.getBoundingClientRect();
+        tip.innerHTML=`<b>${d.m} 2026</b><br>All — ${d.all.toFixed(2)} (${d.nA.toLocaleString()})<br>Written — ${d.w.toFixed(2)} (${d.nW.toLocaleString()})`;
+        tip.style.left=((ev.clientX-r.left)/r.width*100)+"%";
+        tip.style.top=(y(d.all)/H*r.height-10)+"px"; tip.classList.add("on");
+      });
+      hit.addEventListener("mouseleave",()=>tip.classList.remove("on"));
+      svg.appendChild(hit);
+    });
+  }
+
+  /* ---------------- release trains ---------------- */
+  function drawTrains() {
+    const svg = document.getElementById("trains"), tip = document.getElementById("trains-tip");
+    svg.textContent = "";
+    // One scale only. The one-star share is a second measure on a different unit,
+    // so it is printed under each bar rather than drawn as a second y-axis —
+    // two scales in one frame can be made to show any relationship you like.
+    const W=700,H=320,L=52,R=16,T=34,B=64;
+    const bw = (W-L-R)/TRAINS.length;
+    const y = v => T + ((3.8-v)/2.2)*(H-T-B);
+
+    for (let g=2; g<=3.5; g+=0.5) {
+      svg.appendChild(el("line",{x1:L,x2:W-R,y1:y(g),y2:y(g),stroke:css("--line"),"stroke-width":1}));
+      svg.appendChild(txt(g.toFixed(1),{x:L-10,y:y(g)+7,"text-anchor":"end",fill:css("--faint"),"font-size":17,"font-family":MONO}));
+    }
+
+    // the break sits inside the 2026.4 column
+    const bx = L + 3.5*bw;
+    svg.appendChild(el("line",{x1:bx,x2:bx,y1:T-16,y2:H-B,stroke:css("--red"),"stroke-width":1.5,"stroke-dasharray":"4 4",opacity:.7}));
+    svg.appendChild(txt("2026.4.3",{x:bx-6,y:T-22,"text-anchor":"end",fill:css("--red"),"font-size":17,"font-family":MONO,"font-weight":500}));
+
+    TRAINS.forEach((d,i)=>{
+      const cx = L + i*bw + bw/2, top = y(d.avg), h = (H-B)-top;
+      svg.appendChild(el("rect",{x:cx-bw*0.3,y:top,width:bw*0.6,height:Math.max(h,1),
+        fill:css("--teal"),rx:4,ry:4,stroke:css("--surface"),"stroke-width":2}));
+      svg.appendChild(txt(d.avg.toFixed(2),{x:cx,y:top-10,"text-anchor":"middle",fill:css("--ink"),"font-size":17,"font-family":MONO,"font-weight":500}));
+      svg.appendChild(txt(d.v,{x:cx,y:H-42,"text-anchor":"middle",fill:css("--muted"),"font-size":17,"font-family":MONO}));
+      svg.appendChild(txt(d.one+"% 1★",{x:cx,y:H-16,"text-anchor":"middle",fill:css("--red"),"font-size":17,"font-family":MONO}));
+      const hit = el("rect",{x:L+i*bw,y:T,width:bw,height:H-T-B,fill:"transparent"});
+      hit.addEventListener("mousemove",ev=>{
+        const r=svg.getBoundingClientRect();
+        tip.innerHTML=`<b>${d.v}.x</b><br>${d.avg.toFixed(2)} average · ${d.one}% one star<br>${d.n.toLocaleString()} written reviews`;
+        tip.style.left=((ev.clientX-r.left)/r.width*100)+"%";
+        tip.style.top=(top/H*r.height-10)+"px"; tip.classList.add("on");
+      });
+      hit.addEventListener("mouseleave",()=>tip.classList.remove("on"));
+      svg.appendChild(hit);
+    });
+
+  }
+
+  /* ---------------- kind bars ---------------- */
+  function drawBars() {
+    const svg = document.getElementById("bars"), tip = document.getElementById("bars-tip");
+    svg.textContent = "";
+    // At double size the count no longer fits between the bar end and the score
+    // block, so it sits INSIDE the bar wherever the bar is wide enough to hold it.
+    const W=700,H=372,L=186,R=152,T=10;
+    const rowH = (H-T)/KINDS.length;
+    const max = 1100;
+    const w = n => n/max*(W-L-R);
+
+    KINDS.forEach((d,i)=>{
+      const cy = T + i*rowH + rowH/2;
+      const bw = Math.max(w(d.n),2), hot = d.one>=65;
+      svg.appendChild(txt(d.name,{x:L-14,y:cy+5,"text-anchor":"end",fill:css("--ink"),"font-size":17}));
+      svg.appendChild(el("rect",{x:L,y:cy-15,width:bw,height:30,rx:5,ry:5,
+        fill:hot?css("--red"):css("--teal"),opacity:hot?.9:.85}));
+      // ~10.2px per character at 17px mono, plus padding either side.
+      const label = d.n.toLocaleString(), inside = bw > label.length*10.2 + 24;
+      svg.appendChild(txt(label,{
+        x: inside ? L+bw-12 : L+bw+12, y: cy+8,
+        "text-anchor": inside ? "end" : "start",
+        fill: inside ? css("--surface") : css("--body"),
+        "font-size":17,"font-family":MONO,"font-weight":500}));
+      svg.appendChild(txt(d.avg.toFixed(2)+" · "+d.one+"% 1★",
+        {x:W-4,y:cy+7,"text-anchor":"end",fill:css("--muted"),"font-size":17,"font-family":MONO}));
+      const hit = el("rect",{x:0,y:cy-rowH/2,width:W,height:rowH,fill:"transparent"});
+      hit.addEventListener("mousemove",ev=>{
+        const r=svg.getBoundingClientRect();
+        tip.innerHTML=`<b>${d.name}</b><br>${d.n.toLocaleString()} reviews · ${d.avg.toFixed(2)} average<br>${d.one}% gave one star`;
+        tip.style.left=((ev.clientX-r.left)/r.width*100)+"%";
+        tip.style.top=(cy/H*r.height-10)+"px"; tip.classList.add("on");
+      });
+      hit.addEventListener("mouseleave",()=>tip.classList.remove("on"));
+      svg.appendChild(hit);
+    });
+  }
+
+  /* ---------------- dumbbell ---------------- */
+  function drawDumbbell() {
+    const svg = document.getElementById("dumbbell"), tip = document.getElementById("db-tip");
+    svg.textContent = "";
+    const W=700,H=344,L=186,R=84,T=12;
+    const rows = KINDS.slice().sort((p,q)=>(p.a-p.b)-(q.a-q.b));
+    const rowH = (H-T-30)/rows.length;
+    const x = v => L + ((v-1.2)/2.6)*(W-L-R);
+
+    [1.5,2,2.5,3,3.5].forEach(g=>{
+      svg.appendChild(el("line",{x1:x(g),x2:x(g),y1:T,y2:H-32,stroke:css("--line"),"stroke-width":1}));
+      svg.appendChild(txt(g.toFixed(1),{x:x(g),y:H-6,"text-anchor":"middle",fill:css("--faint"),"font-size":17,"font-family":MONO}));
+    });
+
+    rows.forEach((d,i)=>{
+      const cy = T + i*rowH + rowH/2;
+      svg.appendChild(txt(d.name,{x:L-14,y:cy+5,"text-anchor":"end",fill:css("--ink"),"font-size":17}));
+      svg.appendChild(el("line",{x1:x(d.b),x2:x(d.a),y1:cy,y2:cy,stroke:css("--line-firm"),"stroke-width":3,"stroke-linecap":"round"}));
+      svg.appendChild(el("circle",{cx:x(d.b),cy,r:7,fill:css("--teal"),stroke:css("--surface"),"stroke-width":2}));
+      svg.appendChild(el("circle",{cx:x(d.a),cy,r:7,fill:css("--red"),stroke:css("--surface"),"stroke-width":2}));
+      svg.appendChild(txt((d.a-d.b).toFixed(2),{x:W-6,y:cy+7,"text-anchor":"end",fill:css("--red"),
+        "font-size":17,"font-weight":500,"font-family":MONO}));
+      const hit = el("rect",{x:0,y:cy-rowH/2,width:W,height:rowH,fill:"transparent"});
+      hit.addEventListener("mousemove",ev=>{
+        const r=svg.getBoundingClientRect();
+        tip.innerHTML=`<b>${d.name}</b><br>Before — ${d.b.toFixed(2)}, ${d.b1}% one star (${d.nb})<br>After — ${d.a.toFixed(2)}, ${d.a1}% one star (${d.na})`;
+        tip.style.left=((ev.clientX-r.left)/r.width*100)+"%";
+        tip.style.top=(cy/H*r.height-10)+"px"; tip.classList.add("on");
+      });
+      hit.addEventListener("mouseleave",()=>tip.classList.remove("on"));
+      svg.appendChild(hit);
+    });
+  }
+
+  /* ---------------- small multiples ---------------- */
+  function drawSparks() {
+    const host = document.getElementById("sparks");
+    const tip  = document.getElementById("sparks-tip");
+    host.textContent = "";
+    const series = KINDS.map(k=>({name:k.name,trail:k.trail}))
+      .concat([{name:'"The latest update"',trail:UPDATE_TRAIL,flat:true}]);
+
+    for (const s of series) {
+      const card = document.createElement("div");
+      card.className = "spark";
+      const h = document.createElement("h3"); h.textContent = s.name; card.appendChild(h);
+
+      const pts = s.trail.filter(v=>v!=null);
+      const delta = pts.length>1 ? pts[pts.length-1]-pts[0] : 0;
+      const v = document.createElement("div"); v.className = "val";
+      v.innerHTML = pts.length>1
+        ? `${pts[0].toFixed(2)} → ${pts[pts.length-1].toFixed(2)} <b class="${s.flat?"flat":""}">${delta>0?"+":""}${delta.toFixed(2)}</b>`
+        : "too few to score";
+      card.appendChild(v);
+
+      const W=180,H=56;
+      const svg = el("svg",{viewBox:`0 0 ${W} ${H}`,role:"img"});
+      svg.setAttribute("aria-label",`${s.name}: average rating across releases 2026.1 to 2026.7`);
+      const x = i => 3 + i*(W-6)/6;
+      const y = val => 7 + ((3.8-val)/2.6)*(H-14);
+
+      svg.appendChild(el("polyline",{points:ALL_TRAIL.map((val,i)=>`${x(i)},${y(val)}`).join(" "),
+        fill:"none",stroke:css("--line-firm"),"stroke-width":1.5}));
+
+      // Gaps are real: a missing release must break the line, not be bridged.
+      let run = [];
+      const flush = () => {
+        if (run.length>1) svg.appendChild(el("polyline",{points:run.map(p=>`${p[0]},${p[1]}`).join(" "),
+          fill:"none",stroke:css(s.flat?"--muted":"--red"),"stroke-width":2,"stroke-linecap":"round","stroke-linejoin":"round"}));
+        else if (run.length===1) svg.appendChild(el("circle",{cx:run[0][0],cy:run[0][1],r:2,fill:css("--red")}));
+        run = [];
+      };
+      s.trail.forEach((val,i)=>{ if (val==null) flush(); else run.push([x(i),y(val)]); });
+      flush();
+
+      const last = s.trail.map((val,i)=>[val,i]).filter(p=>p[0]!=null).pop();
+      if (last) svg.appendChild(el("circle",{cx:x(last[1]),cy:y(last[0]),r:3.5,
+        fill:css(s.flat?"--muted":"--red"),stroke:css("--surface"),"stroke-width":1.5}));
+
+      // A hover target per release column. The whole point of this chart is
+      // "which release", so the release number has to be readable, and there is
+      // no room to print seven labels under a card this size.
+      s.trail.forEach((val,i)=>{
+        const hit = el("rect",{x:x(i)-((W-6)/12),y:0,width:(W-6)/6,height:H,fill:"transparent"});
+        hit.addEventListener("mousemove",ev=>{
+          const r = host.getBoundingClientRect();
+          tip.innerHTML = `<b>${TRAINS[i].v}</b> · ${s.name}<br>` +
+            (val==null ? "too few reviews to score" : `${val.toFixed(2)} average`);
+          tip.style.left = (ev.clientX - r.left) + "px";
+          tip.style.top  = (ev.clientY - r.top - 12) + "px";
+          tip.classList.add("on");
+        });
+        svg.appendChild(hit);
+      });
+      // Hiding on each rect would flicker when crossing between columns.
+      svg.addEventListener("mouseleave",()=>tip.classList.remove("on"));
+
+      card.appendChild(svg);
+      host.appendChild(card);
+    }
+  }
+
+  const draw = () => { drawLines(); drawTrains(); drawBars(); drawDumbbell(); drawSparks(); };
+  draw();
+  // Colours come from tokens, so a theme change means a redraw.
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
+  new MutationObserver(draw).observe(document.documentElement, { attributes:true, attributeFilter:["data-theme"] });
+  window.addEventListener("resize", () => { clearTimeout(window.__t); window.__t = setTimeout(draw, 150); });
+})();
+</script>

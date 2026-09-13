@@ -1,0 +1,31 @@
+{
+  "_readme": [
+    "Copy to app.json and edit. This is the ONLY file that knows which app you are",
+    "looking at — every script reads it, nothing else is app-specific.",
+    "",
+    "  slug        goes in every output filename. lowercase-with-dashes.",
+    "  name        for console output only.",
+    "  androidId   the Play package id, from the store URL: play.google.com/store/apps/details?id=THIS",
+    "  iosId       the App Store numeric id, from the URL: apps.apple.com/../id437564823 -> 437564823.",
+    "              Omit it for a Play-only app; the App Store step is then skipped.",
+    "  country     two-letter store country. This matters: an app can rank very",
+    "              differently in two storefronts.",
+    "  iosCountry  only if the App Store storefront differs from country.",
+    "  androidLangs  device LOCALES to sweep, not review languages. Leave it out to",
+    "              use the default 30. Put the app's main markets first.",
+    "  stopWords   the app's own name and its local spellings, plus the local words",
+    "              for 'app' and 'program'. WITHOUT THESE THE BIGGEST CLUSTER FORMS",
+    "              ON THE APP'S OWN NAME and one of your groups is wasted.",
+    "  maxPlayPages  raise it for a very high-volume app. 250 covers ~37k reviews."
+  ],
+
+  "slug": "ana-vodafone",
+  "name": "Ana Vodafone",
+  "androidId": "com.emeint.android.myservices",
+  "iosId": "437564823",
+  "country": "eg",
+  "androidLangs": ["ar", "en", "fr", "de", "tr", "it", "es", "ru", "nl", "pt",
+    "el", "id", "ur", "fa", "hi", "zh", "ja", "ko", "pl", "ro", "sv", "da", "cs",
+    "hu", "he", "uk", "th", "vi", "ms", "bn"],
+  "stopWords": ["تطبيق", "برنامج", "فودافون", "فودافن", "ana", "vodafone"]
+}

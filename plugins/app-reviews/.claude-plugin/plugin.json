@@ -1,0 +1,12 @@
+{
+  "name": "app-reviews",
+  "displayName": "App Reviews Analysis",
+  "description": "Turn App Store and Google Play reviews into a one-page dashboard: the real score behind the store rating, which release broke it, and what people report.",
+  "version": "1.0.0",
+  "author": { "name": "Aya Tarek" },
+  "homepage": "https://github.com/AyaTarek91/app-reviews-skill",
+  "repository": "https://github.com/AyaTarek91/app-reviews-skill",
+  "license": "MIT",
+  "keywords": ["app-reviews", "app-store", "google-play", "product-management"],
+  "skills": ["./skills/app-reviews"]
+}

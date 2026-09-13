@@ -1,0 +1,106 @@
+{
+  "_readme": [
+    "THE SEVEN PROBLEM TYPES. These transfer to any app — only the words change.",
+    "Copy to areas.json beside the scripts and replace every term with the words",
+    "people actually use in the app's own language and dialect.",
+    "",
+    "  kind   area  = a problem type, counted and ranked",
+    "         cross = cuts across the others; counted, never given a box",
+    "  terms  bare words. Arabic matches across ال/و/ب/ل prefixes and ها/هم/ات",
+    "         suffixes. '*' = prefix search. 're:' = raw regular expression.",
+    "  exclude  words that cancel a match, for killing a known false positive.",
+    "",
+    "TWO RULES THAT ARE NOT OPTIONAL:",
+    "1. Open out/area-probe.html and read the per-term examples BEFORE quoting any",
+    "   number. Wrong matches look identical to right ones in a total.",
+    "2. Never add two area counts together. Areas overlap by design.",
+    "",
+    "The English terms below are a starting skeleton, not a finished list. An",
+    "English-only search on a non-English app finds almost nothing and looks fine."
+  ],
+
+  "splitVersion": null,
+  "_splitVersion_note": "Set this to the version where the score breaks, found by running version-areas.mjs first. Reviews are then compared before vs after it. Leave null if there is no break.",
+
+  "_confidence_note": [
+    "These seven are NOT equally visible to a review channel. Carry this into the",
+    "report — a small count means opposite things depending on which row it is:",
+    "  STRONG   Reliability, Billing & trust, Customer support, Onboarding.",
+    "           People name these explicitly and in consistent words.",
+    "  WEAK     Usability & navigation. People muddle through and blame themselves.",
+    "           A low count is evidence about the channel, not about the app.",
+    "  WEAK     Platform & device. The device is in the store metadata, not the",
+    "           sentence. Use the iOS-vs-Android split instead.",
+    "  BIASED   Feature requests. Only from people who STAYED. Everyone who needed",
+    "           something missing and left is invisible."
+  ],
+
+  "areas": [
+    {
+      "name": "Reliability & functional bugs",
+      "kind": "area",
+      "terms": ["crash*", "keeps closing", "won't open", "not working", "doesn't work",
+        "error", "failed", "freez*", "stuck", "bug*", "glitch*", "black screen",
+        "try again later"],
+      "note": "The strongest area for review data: a crash is unambiguous and needs no product knowledge to read. ADD THE APP'S OWN ERROR STRINGS here — users quote them verbatim, and they are the most precise search terms available anywhere."
+    },
+    {
+      "name": "Billing & trust",
+      "kind": "area",
+      "terms": ["charge*", "refund", "deduct*", "steal*", "stolen", "scam*", "money",
+        "overcharg*", "auto renew*", "subscription", "expensive", "price*", "bill*",
+        "privacy", "security", "permission*", "hack*"],
+      "note": "Money complaints are loud and specific, so the count is trustworthy. What it CANNOT tell you is whether the charge was actually wrong — only billing records can. Read every hit as 'a customer believes they were wronged', which is a trust finding either way. Security and privacy live here because both are trust."
+    },
+    {
+      "name": "Usability & navigation",
+      "kind": "area",
+      "terms": ["navigat*", "confusing", "confus*", "hard to find", "complicated",
+        "layout", "user friendly", "user-friendly", "interface", "cluttered", "messy",
+        "difficult to use", "accessib*", "screen reader", "font size", "text size",
+        "ads", "advert*", "language", "translat*"],
+      "note": "WEAK BY NATURE — whatever comes back is a floor, not a measure. Settle it with drop-off by screen or a usability test, never with reviews. Accessibility, ads/clutter and language are folded in here because each is too small to stand alone and all three are 'I cannot comfortably use this'. Fold them INSIDE this term list, never by adding separate counts."
+    },
+    {
+      "name": "Onboarding & account setup",
+      "kind": "area",
+      "terms": ["login", "log in", "sign in", "sign up", "signup", "register*",
+        "verification", "verify", "otp", "password", "activate", "activation",
+        "onboarding", "first time", "code never"],
+      "note": "Strong and well-worded. Note this is the FIRST DOOR: a failure here means the user reached nothing else, so its reviews describe the whole app as broken."
+    },
+    {
+      "name": "Customer support gaps",
+      "kind": "area",
+      "terms": ["support", "customer service", "customer care", "call center",
+        "call centre", "no response", "never replied", "no reply", "complaint*",
+        "agent", "human", "helpline", "ticket", "chat"],
+      "note": "Usually the area where clustering and search agree most closely, which makes it the best sanity check that the whole method is working. Mixes praise with rage — read the one-star share, not the average."
+    },
+    {
+      "name": "Platform & device friction",
+      "kind": "area",
+      "terms": ["android", "ios", "iphone", "ipad", "huawei", "xiaomi", "samsung",
+        "oppo", "storage", "space", "compatib*", "force* update", "old device",
+        "play store", "app store", "download*", "install*", "notification*", "alert*"],
+      "note": "WEAK, and it is a measurement problem rather than a vocabulary one: nobody writes 'on Android 9'. Expect most device terms to match nothing — that absence IS the finding. The real evidence is the iOS-vs-Android score gap, which the collector already gives you."
+    },
+    {
+      "name": "Feature requests",
+      "kind": "area",
+      "terms": ["please add", "i wish", "wish you", "it would be", "feature request",
+        "why not add", "hope you add", "suggestion"],
+      "note": "KEEP THESE TERMS NARROW. Polite words are not intent words. Searching 'please' or 'I hope you fix' returns bug reports, and any phrase that appears in the app's own error messages returns the app quoting itself. A correct list produces a HIGHER average rating than the other areas — requests come from happier people. If this area's rating looks like the others, the terms are wrong."
+    },
+
+    { "name": "Speed & performance", "kind": "cross",
+      "terms": ["slow", "lag*", "loading", "takes forever", "performance", "freez*"],
+      "note": "Reported inside login, payment and browsing alike. Counted, never a box of its own." },
+    { "name": "\"The latest update\"", "kind": "cross",
+      "terms": ["update*", "new version", "latest version", "after the update"],
+      "note": "A symptom word, not a problem type. Its only job is to DATE a problem. Expect it to be FLAT across versions while everything else falls — it attaches to whichever release is newest, so it is always unhappy and never points at one. That flatness is the proof it is not an area." },
+    { "name": "Data loss & wrong information", "kind": "cross",
+      "terms": ["wrong", "incorrect", "inaccurate", "not updated", "outdated", "out of date"],
+      "note": "'The app shows me the wrong balance' is neither a crash nor a billing error and would otherwise fall between the seven." }
+  ]
+}

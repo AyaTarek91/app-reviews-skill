@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Draft product areas — review and edit</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --ink: #1c2024;
+    --muted: #6b7280;
+    --line: #e3e6ea;
+    --accent: #b4121b;
+    --accent-soft: #fdeaeb;
+    --good: #1f8a4c;
+    --warn: #c2760a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 15px/1.55 -apple-system, "Segoe UI", system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+  }
+  header {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--card);
+    border-bottom: 1px solid var(--line);
+    padding: 14px 22px;
+    display: flex; align-items: center; gap: 22px; flex-wrap: wrap;
+  }
+  header h1 { font-size: 17px; margin: 0; font-weight: 650; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .grow { flex: 1; }
+  button {
+    font: inherit; font-size: 13px; padding: 7px 13px; border-radius: 7px;
+    border: 1px solid var(--line); background: var(--card); color: var(--ink);
+    cursor: pointer;
+  }
+  button:hover { border-color: #c5cad1; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { background: #970f17; }
+  .progress { width: 190px; height: 7px; border-radius: 4px; background: var(--line); overflow: hidden; }
+  .progress > div { height: 100%; background: var(--good); transition: width .2s; }
+
+  .layout { display: grid; grid-template-columns: 275px 1fr; gap: 22px; padding: 22px; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+  aside { position: sticky; top: 74px; background: var(--card); border: 1px solid var(--line); border-radius: 11px; padding: 15px; }
+  aside h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 11px; }
+  .cat { display: flex; align-items: center; gap: 7px; padding: 5px 7px; border-radius: 6px; cursor: pointer; }
+  .cat:hover { background: var(--bg); }
+  .cat.active { background: var(--accent-soft); }
+  .cat .nm { flex: 1; font-size: 14px; }
+  .cat .ct { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .cat .x { opacity: 0; border: 0; background: none; color: var(--muted); padding: 0 3px; font-size: 15px; }
+  .cat:hover .x { opacity: 1; }
+  .addrow { display: flex; gap: 6px; margin-top: 11px; }
+  .addrow input { flex: 1; min-width: 0; font: inherit; font-size: 13px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 6px; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 11px; padding: 17px 19px; margin-bottom: 14px; }
+  .card.assigned { border-left: 3px solid var(--good); }
+  .card.flagged { border-left: 3px solid var(--warn); }
+  .card > .top { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+  .nameinput {
+    font: inherit; font-size: 16px; font-weight: 600; padding: 5px 9px; min-width: 260px; flex: 1;
+    border: 1px solid transparent; border-radius: 7px; background: var(--bg); color: var(--ink);
+  }
+  .nameinput:focus { border-color: var(--accent); background: var(--card); outline: none; }
+  .stats { display: flex; gap: 15px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; align-items: center; }
+  .stats b { color: var(--ink); font-weight: 600; }
+  .terms { margin: 11px 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .term { font-size: 12.5px; padding: 3px 9px; border-radius: 20px; background: var(--bg); border: 1px solid var(--line); color: #3d444c; }
+  .meta { margin-top: 11px; font-size: 12.5px; color: var(--muted); display: flex; gap: 20px; flex-wrap: wrap; }
+  .spark { display: inline-flex; align-items: flex-end; gap: 2px; height: 17px; vertical-align: -3px; }
+  .spark i { width: 7px; background: #c8ced6; border-radius: 1px; display: block; }
+  .controls { margin-top: 13px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  select, .note { font: inherit; font-size: 13px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--card); color: var(--ink); }
+  .note { flex: 1; min-width: 180px; }
+  label.chk { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; cursor: pointer; }
+
+  .samples { margin-top: 13px; border-top: 1px solid var(--line); padding-top: 11px; }
+  .samples summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+  .rev { padding: 9px 0; border-bottom: 1px solid var(--line); display: flex; gap: 12px; align-items: flex-start; }
+  .rev:last-child { border-bottom: 0; }
+  .rev .tag { flex: 0 0 128px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; line-height: 1.5; }
+  .rev .txt { flex: 1; font-size: 14.5px; line-height: 1.7; }
+  .stars { color: var(--accent); letter-spacing: 1px; }
+  .empty { color: var(--muted); font-size: 14px; padding: 40px; text-align: center; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Draft product areas</h1>
+    <div class="sub" id="totals"></div>
+  </div>
+  <div class="grow"></div>
+  <div class="sub" id="progresstext"></div>
+  <div class="progress"><div id="progressbar" style="width:0"></div></div>
+  <button id="importbtn">Import</button>
+  <button class="primary" id="exportbtn">Export Axis A</button>
+  <input type="file" id="importfile" accept=".json" hidden>
+</header>
+
+<div class="layout">
+  <aside>
+    <h2>Product areas</h2>
+    <div id="cats"></div>
+    <div class="addrow">
+      <input id="newcat" placeholder="New area name" autocomplete="off">
+      <button id="addcat">Add</button>
+    </div>
+    <div style="margin-top:13px">
+      <button id="seedbtn" style="width:100%">Add suggested telco areas</button>
+    </div>
+    <div class="sub" style="margin-top:13px; line-height:1.5">
+      Rename a group to what it really is. Put two groups in the same area to
+      merge them. Tick <b>needs split</b> if one group holds two different
+      things.
+    </div>
+  </aside>
+
+  <main id="list"></main>
+</div>
+
+<script>const DATA = /*__CLUSTER_DATA__*/ null;</script>
+<script>
+const KEY = 'axis-a:' + DATA.source;
+const SEED_AREAS = ['Account & Access', 'Balance & Usage', 'Recharge & Top-up',
+  'Payments & Billing', 'Vodafone Cash', 'Flex', 'Red', 'Offers & Bundles',
+  'eShop', 'Entertainment', 'Notifications', 'Support & Complaints', 'Roaming',
+  'eSIM & SIM', 'Loyalty & Rewards'];
+
+// Two areas that exist for every app, not just this one: complaints that are
+// not about the app at all, and reviews with nothing in them. Both must be
+// visible and counted, or they quietly contaminate the real areas.
+const DEFAULT_STATE = {
+  categories: ['Not the app (network / pricing)', 'No content (praise or venting)'],
+  assign: {}, names: {}, split: {}, notes: {}
+};
+
+let state;
+try { state = Object.assign({}, DEFAULT_STATE, JSON.parse(localStorage.getItem(KEY) || '{}')); }
+catch { state = structuredClone(DEFAULT_STATE); }
+
+let filter = null;
+// Opened straight from disk, Chrome sometimes refuses localStorage. Autosave
+// is a convenience; the exported file is the real save, so a refusal here must
+// not throw on every keystroke and break the page.
+let warnedNoSave = false;
+function save() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state));
+  } catch {
+    if (!warnedNoSave) {
+      warnedNoSave = true;
+      document.getElementById('totals').textContent +=
+        ' — this browser will not autosave, so press Export before closing.';
+    }
+  }
+}
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const nameOf = (c) => state.names[c.id] ?? c.suggested_name;
+
+function renderCats() {
+  const counts = {};
+  let assignedReviews = 0;
+  for (const c of DATA.clusters) {
+    const cat = state.assign[c.id];
+    if (!cat) continue;
+    counts[cat] = (counts[cat] ?? 0) + c.size;
+    assignedReviews += c.size;
+  }
+
+  document.getElementById('cats').innerHTML = state.categories.map((cat) => `
+    <div class="cat ${filter === cat ? 'active' : ''}" data-cat="${esc(cat)}">
+      <span class="nm">${esc(cat)}</span>
+      <span class="ct">${counts[cat] ? counts[cat].toLocaleString() : '—'}</span>
+      <button class="x" data-del="${esc(cat)}" title="Remove area">&times;</button>
+    </div>`).join('') || '<div class="sub">No areas yet.</div>';
+
+  const done = DATA.clusters.filter((c) => state.assign[c.id]).length;
+  document.getElementById('progresstext').textContent =
+    `${done} of ${DATA.clusters.length} groups placed · ${assignedReviews.toLocaleString()} reviews`;
+  document.getElementById('progressbar').style.width = (done / DATA.clusters.length * 100) + '%';
+}
+
+function sparkline(months) {
+  const max = Math.max(...months.map((m) => m.count), 1);
+  return '<span class="spark">' + months.map((m) =>
+    `<i style="height:${Math.max(2, Math.round(m.count / max * 17))}px" title="${m.month}: ${m.count}"></i>`
+  ).join('') + '</span>';
+}
+
+function renderList() {
+  const shown = DATA.clusters.filter((c) => !filter || state.assign[c.id] === filter);
+  if (!shown.length) { document.getElementById('list').innerHTML = '<div class="empty">Nothing in this area yet.</div>'; return; }
+
+  document.getElementById('list').innerHTML = shown.map((c) => {
+    const assigned = state.assign[c.id];
+    const opts = ['<option value="">— place in an area —</option>']
+      .concat(state.categories.map((cat) =>
+        `<option value="${esc(cat)}" ${assigned === cat ? 'selected' : ''}>${esc(cat)}</option>`)).join('');
+
+    const versions = c.versions.slice(0, 3)
+      .map((v) => `${esc(v.version)} (${v.count})`).join(', ');
+
+    const samples = c.samples.map((s) => `
+      <div class="rev">
+        <div class="tag">
+          <span class="stars">${'★'.repeat(s.rating)}${'☆'.repeat(5 - s.rating)}</span><br>
+          ${s.date}<br>${esc(s.app_version || '—')}${s.store === 'App Store' ? '<br>iOS' : ''}
+        </div>
+        <div class="txt" dir="auto">${esc(s.text)}</div>
+      </div>`).join('');
+
+    return `
+    <div class="card ${assigned ? 'assigned' : ''} ${state.split[c.id] ? 'flagged' : ''}" data-id="${c.id}">
+      <div class="top">
+        <input class="nameinput" data-name="${c.id}" value="${esc(nameOf(c))}" dir="auto">
+        <div class="stats">
+          <span><b>${c.size.toLocaleString()}</b> reviews</span>
+          <span><b>${c.avg_rating.toFixed(2)}</b> avg</span>
+          <span><b>${Math.round(c.one_star_share * 100)}%</b> 1★</span>
+          <span>${c.ios ? `<b>${c.ios}</b> iOS` : ''}</span>
+        </div>
+      </div>
+      <div class="terms">${c.top_terms.map((t) => `<span class="term" dir="auto">${esc(t)}</span>`).join('')}</div>
+      <div class="meta">
+        <span>Versions: ${versions || '—'}</span>
+        <span>Feb → Aug ${sparkline(c.months)}</span>
+      </div>
+      <div class="controls">
+        <select data-assign="${c.id}">${opts}</select>
+        <label class="chk"><input type="checkbox" data-split="${c.id}" ${state.split[c.id] ? 'checked' : ''}> needs split</label>
+        <input class="note" data-note="${c.id}" placeholder="Note for later (optional)" value="${esc(state.notes[c.id] ?? '')}">
+      </div>
+      <details class="samples">
+        <summary>${c.samples.length} example reviews, closest to the middle of this group</summary>
+        ${samples}
+      </details>
+    </div>`;
+  }).join('');
+}
+
+function render() { renderCats(); renderList(); }
+
+// --- Events ----------------------------------------------------------------
+document.getElementById('cats').addEventListener('click', (e) => {
+  const del = e.target.closest('[data-del]');
+  if (del) {
+    const cat = del.dataset.del;
+    const used = DATA.clusters.filter((c) => state.assign[c.id] === cat).length;
+    if (used && !confirm(`"${cat}" holds ${used} group(s). Remove it and unplace them?`)) return;
+    state.categories = state.categories.filter((x) => x !== cat);
+    for (const id of Object.keys(state.assign)) if (state.assign[id] === cat) delete state.assign[id];
+    if (filter === cat) filter = null;
+    save(); render();
+    return;
+  }
+  const row = e.target.closest('[data-cat]');
+  if (row) { filter = filter === row.dataset.cat ? null : row.dataset.cat; render(); }
+});
+
+function addCategory(name) {
+  name = name.trim();
+  if (!name || state.categories.includes(name)) return;
+  state.categories.push(name);
+  save(); render();
+}
+document.getElementById('addcat').addEventListener('click', () => {
+  const input = document.getElementById('newcat');
+  addCategory(input.value); input.value = '';
+});
+document.getElementById('newcat').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('addcat').click();
+});
+document.getElementById('seedbtn').addEventListener('click', () => {
+  SEED_AREAS.forEach((a) => { if (!state.categories.includes(a)) state.categories.push(a); });
+  save(); render();
+});
+
+document.getElementById('list').addEventListener('change', (e) => {
+  const t = e.target;
+  if (t.dataset.assign !== undefined) {
+    if (t.value) state.assign[t.dataset.assign] = t.value;
+    else delete state.assign[t.dataset.assign];
+    save(); render();
+  } else if (t.dataset.split !== undefined) {
+    if (t.checked) state.split[t.dataset.split] = true; else delete state.split[t.dataset.split];
+    save();
+    t.closest('.card').classList.toggle('flagged', t.checked);
+  }
+});
+// Typing saves on every keystroke but must not re-render, or the caret jumps
+// back to the start of the box mid-word.
+document.getElementById('list').addEventListener('input', (e) => {
+  const t = e.target;
+  if (t.dataset.name !== undefined) { state.names[t.dataset.name] = t.value; save(); }
+  else if (t.dataset.note !== undefined) { state.notes[t.dataset.note] = t.value; save(); }
+});
+
+// --- Export / import -------------------------------------------------------
+document.getElementById('exportbtn').addEventListener('click', () => {
+  const areas = state.categories.map((cat) => {
+    const members = DATA.clusters.filter((c) => state.assign[c.id] === cat);
+    const size = members.reduce((s, c) => s + c.size, 0);
+    const rated = members.reduce((s, c) => s + c.avg_rating * c.size, 0);
+    return {
+      name: cat,
+      reviews: size,
+      ios_reviews: members.reduce((s, c) => s + c.ios, 0),
+      avg_rating: size ? Number((rated / size).toFixed(2)) : null,
+      groups: members.map((c) => ({ id: c.id, name: nameOf(c), reviews: c.size }))
+    };
+  });
+
+  const unplaced = DATA.clusters.filter((c) => !state.assign[c.id]);
+  const codebook = {
+    generated: new Date().toISOString(),
+    source: DATA.source,
+    clustering: DATA.params,
+    // Both denominators travel with the codebook so no later stage has to
+    // guess what the percentages are a share of.
+    totals: DATA.totals,
+    axis_a: areas,
+    unplaced: unplaced.map((c) => ({ id: c.id, name: nameOf(c), reviews: c.size })),
+    needs_split: Object.keys(state.split).map(Number).map((id) => {
+      const c = DATA.clusters.find((x) => x.id === id);
+      return { id, name: nameOf(c), reviews: c.size, note: state.notes[id] ?? '' };
+    }),
+    group_map: DATA.clusters.map((c) => ({
+      id: c.id,
+      draft_name: c.suggested_name,
+      name: nameOf(c),
+      area: state.assign[c.id] ?? null,
+      reviews: c.size,
+      note: state.notes[c.id] ?? ''
+    }))
+  };
+
+  const blob = new Blob([JSON.stringify(codebook, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'axis-a-codebook.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+// The browser can clear localStorage at any time, so the exported file is the
+// real save. Import reads one back in.
+document.getElementById('importbtn').addEventListener('click', () => document.getElementById('importfile').click());
+document.getElementById('importfile').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const book = JSON.parse(await file.text());
+    const next = structuredClone(DEFAULT_STATE);
+    next.categories = book.axis_a.map((a) => a.name);
+    for (const g of book.group_map ?? []) {
+      if (g.area) next.assign[g.id] = g.area;
+      if (g.name) next.names[g.id] = g.name;
+      if (g.note) next.notes[g.id] = g.note;
+    }
+    for (const s of book.needs_split ?? []) next.split[s.id] = true;
+    state = next; save(); render();
+  } catch (err) {
+    alert('Could not read that file: ' + err.message);
+  }
+  e.target.value = '';
+});
+
+document.getElementById('totals').textContent =
+  `${DATA.totals.all_reviews.toLocaleString()} reviews collected · ` +
+  `${DATA.totals.substantive.toLocaleString()} said something · ` +
+  `${DATA.totals.clustered.toLocaleString()} grouped into ${DATA.clusters.length} draft groups · ` +
+  `${DATA.totals.no_topic.toLocaleString()} had no topic`;
+
+render();
+</script>
+</body>
+</html>
