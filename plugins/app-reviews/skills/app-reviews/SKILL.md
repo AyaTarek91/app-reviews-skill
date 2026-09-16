@@ -20,11 +20,13 @@ a review-derived count as a measured user need.
 
 **Run this before anything else, and tell the user what it said in your first reply:**
 
-```
-node preflight.mjs
+```bash
+node "$SKILL/scripts/preflight.mjs"
 ```
 
-It checks the one dependency and actually tries to reach the two store domains, then
+It prints the directory it resolved — check that line is the user's folder, not the
+skill's, before starting anything long. Then it checks the one dependency and actually
+tries to reach the two store domains, then
 prints one of two verdicts: **full pipeline**, or **analysis only**. Do not reason about
 which surface you are on or what the settings ought to allow — the check answers it for
 the account in front of you, and the docs often do not.
@@ -83,7 +85,7 @@ Do not start the pipeline and let the fetch fail. Check which case you are in fi
 ids yourself:
 
 ```
-node find-app.mjs "spotify" eg
+node "$SKILL/scripts/find-app.mjs" "spotify" eg
 ```
 
 It prints up to five candidates per store with developer, rating and rating count.
@@ -101,27 +103,58 @@ So the only things you actually have to ask for are:
 Do **not** open with a vague question about the product. The useful product questions come
 later, once there are specific themes to ask about — see the checkpoint below.
 
+## Where everything goes — run from the user's folder, never the skill's
+
+**Work in the folder the user is in. Never write into the skill directory.** The scripts
+live with the skill and are read-only; `app.json`, `areas.json` and everything in `out/`
+belong to the person and are read and written in the **current working directory**.
+
+Set `$SKILL` once and every command below just works:
+
+```bash
+SKILL=path/to/skills/app-reviews          # wherever the skill is installed
+```
+
+Four reasons this matters, each one a real failure and not a preference:
+
+1. Someone asks for an analysis of their app and the data lands in a hidden folder under
+   `~/.claude` they would never look in, while the folder they are sitting in stays empty.
+2. `app.json` and `areas.json` are single-slot. In the skill folder, analysing a second app
+   silently destroys the first app's configuration.
+3. Every read and write outside the working directory raises a permission prompt. A
+   first-time user reads that as "this tool is doing something it should not".
+4. **`claude plugin install` and plugin updates replace the skill directory.** Anything
+   kept there is gone on the next update — including a collection that took twenty minutes.
+
+If the analysis should not live in the current directory, set `APP_REVIEWS_DIR` instead of
+moving the files. `preflight.mjs` prints the directory it resolved, so check that line
+before starting a long collection.
+
 ## Setup
 
-```
-cp scripts/app.example.json scripts/app.json     # then edit it
-cp templates/areas.template.json scripts/areas.json
-npm install google-play-scraper
+Run these **in the user's folder**, not in the skill's:
+
+```bash
+cp "$SKILL/scripts/app.example.json" ./app.json          # then edit it
+cp "$SKILL/templates/areas.template.json" ./areas.json
+npm install google-play-scraper                          # installs here, resolved from here
 ```
 
 Node 24, ESM, top-level await. No build step, no tests — do not invent npm scripts.
 
 ## The pipeline
 
-```
-node preflight.mjs                  # what does this environment allow? run this first
-node find-app.mjs "app name" eg      # resolve store ids from a name
-node fetch-reviews.mjs 180          # collect. --ios-only reuses the saved Play pull
-node cluster-reviews.mjs            # group by topic, k=30 default
-node probe-reviews.mjs              # search the named areas, reports zeros too
-node version-areas.mjs              # every area by release train
-node cross-areas.mjs a.json b.json  # two axes crossed (optional)
-node merge-areas.mjs                # codebook + probe side by side (optional)
+Still from the user's folder:
+
+```bash
+node "$SKILL/scripts/preflight.mjs"          # what does this environment allow? run first
+node "$SKILL/scripts/find-app.mjs" "app name" eg   # resolve store ids from a name
+node "$SKILL/scripts/fetch-reviews.mjs" 180  # collect. --ios-only reuses the saved Play pull
+node "$SKILL/scripts/cluster-reviews.mjs"    # group by topic, k=30 default
+node "$SKILL/scripts/probe-reviews.mjs"      # search the named areas, reports zeros too
+node "$SKILL/scripts/version-areas.mjs"      # every area by release train
+node "$SKILL/scripts/cross-areas.mjs" a.json b.json   # two axes crossed (optional)
+node "$SKILL/scripts/merge-areas.mjs"        # codebook + probe side by side (optional)
 ```
 
 **Clustering and search are opposite tools and you need both.** Clustering answers *"what
@@ -234,7 +267,8 @@ Each was a silent wrong answer before it was a rule.
 
 ## The dashboard
 
-Build from `templates/dashboard.html`. Replace the data arrays near the top of its script
+Build from `$SKILL/templates/dashboard.html` — copy it into the user's folder first, and
+edit the copy. Replace the data arrays near the top of its script
 (`MONTHS`, `TRAINS`, `KINDS`) and the tile and table numbers in the markup. Keep the shape:
 
 1. **Tiles** — store score, written-only score, the other store, % saying nothing, break version

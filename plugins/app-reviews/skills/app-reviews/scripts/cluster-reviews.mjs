@@ -14,6 +14,7 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { OUT, WORK, readWorkConfig, widestCombinedFile, readTemplate } from './workdir.mjs';
 
 const args = process.argv.slice(2);
 const K = Number(args.find((a) => /^\d+$/.test(a)) ?? 30);
@@ -30,7 +31,7 @@ const MAX_ITERS = 60;
 const TERMS_PER_CLUSTER = 12;
 const SAMPLES_PER_CLUSTER = 10;
 
-const OUT = path.join(import.meta.dirname, 'out');
+
 
 // --- Text normalisation ----------------------------------------------------
 // Arabic writes the same word several ways: أ/إ/آ vs ا, ى vs ي, ة vs ه, plus
@@ -97,7 +98,7 @@ guys sir dear hello hi ok okay yes yeah pls plz
 // It differs per app, so it comes from app.json instead of living here. Include
 // the local words for 'app' and 'program' too — nearly every review says them.
 try {
-  const cfg = JSON.parse(await fs.readFile(path.join(import.meta.dirname, 'app.json'), 'utf8'));
+  const cfg = await readWorkConfig('app.json');
   for (const w of cfg.stopWords ?? []) STOPWORDS.add(String(w).toLowerCase());
 } catch { /* no app.json: the generic list still works, just less cleanly */ }
 
@@ -318,13 +319,7 @@ function monthSpread(rows) {
 // --- Driver ----------------------------------------------------------------
 // Pick the widest window, not the newest name. Sorting the filenames picks
 // the 30-day pull over the 6-month one, because "07-09" sorts after "02-10".
-const files = (await fs.readdir(OUT))
-  .map((f) => f.match(/^(.+)-reviews_(\d{4}-\d{2}-\d{2})_to_(\d{4}-\d{2}-\d{2})\.json$/))
-  .filter(Boolean)
-  .map((m) => ({ file: m[0], span: Date.parse(m[2]) - Date.parse(m[1]), end: m[2] }))
-  .sort((a, b) => b.span - a.span || b.end.localeCompare(a.end));
-if (!files.length) throw new Error('No combined review file in out/. Run fetch-reviews.mjs first.');
-const source = args.find((a) => a.endsWith('.json')) ?? files[0].file;
+const source = args.find((a) => a.endsWith('.json')) ?? await widestCombinedFile();
 const all = JSON.parse(await fs.readFile(path.join(OUT, source), 'utf8'));
 
 const docs = all
@@ -433,15 +428,6 @@ await fs.writeFile(path.join(OUT, 'clusters.json'), JSON.stringify(out, null, 2)
 // Build the labelling page with the data baked in. A page that fetched
 // clusters.json would work from a web server and silently show nothing when
 // opened by double-clicking, which is how the reader will actually open it.
-
-// The page template may sit beside this script or in ../templates when the
-// scripts are installed as a skill. Try both rather than making the caller care.
-async function readTemplate(name) {
-  for (const dir of [import.meta.dirname, path.join(import.meta.dirname, "..", "templates")]) {
-    try { return await fs.readFile(path.join(dir, name), "utf8"); } catch { /* try next */ }
-  }
-  throw new Error(`Cannot find ${name} beside the script or in ../templates.`);
-}
 
 const template = await readTemplate('label-page.html');
 const embedded = JSON.stringify(out).replace(/</g, '\\u003c'); // can't end the script tag early

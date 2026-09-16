@@ -8,6 +8,9 @@
 // analysing the wrong app produces a clean, plausible, entirely wrong report.
 // Show the list, confirm with the person, then write app.json by hand.
 
+import path from 'node:path';
+import { WORK } from './workdir.mjs';
+
 const [term, country = 'us'] = process.argv.slice(2);
 if (!term) {
   console.error('Usage: node find-app.mjs "<app name>" [country]   e.g. node find-app.mjs "spotify" eg');
@@ -55,6 +58,9 @@ try {
 }
 
 line(`
-Now write app.json. Check the DEVELOPER name matches on both stores before you do —
-the two stores are being joined on your judgement, not on any shared id, and pairing
-two different companies' apps produces a report that looks completely normal.`);
+Now write app.json in the folder you are working in:
+  ${path.join(WORK, 'app.json')}
+
+Check the DEVELOPER name matches on both stores before you do — the two stores are
+being joined on your judgement, not on any shared id, and pairing two different
+companies' apps produces a report that looks completely normal.`);

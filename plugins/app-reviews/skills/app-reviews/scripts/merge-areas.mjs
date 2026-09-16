@@ -21,8 +21,9 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { OUT } from './workdir.mjs';
 
-const OUT = path.join(import.meta.dirname, 'out');
+
 const book = JSON.parse(await fs.readFile(path.join(OUT, 'axis-a-codebook.json'), 'utf8'));
 const probe = JSON.parse(await fs.readFile(path.join(OUT, 'area-probe.json'), 'utf8'));
 

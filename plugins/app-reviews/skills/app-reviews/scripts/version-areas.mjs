@@ -33,6 +33,7 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { OUT, WORK, widestCombinedFile } from './workdir.mjs';
 
 const args = process.argv.slice(2);
 const MIN_BODY_CHARS = 30;
@@ -40,8 +41,7 @@ const minIdx = args.indexOf('--min');
 const MIN_CELL = minIdx >= 0 ? Number(args[minIdx + 1]) : 20;
 const partsIdx = args.indexOf('--parts');
 const PARTS = partsIdx >= 0 ? Number(args[partsIdx + 1]) : 2;
-const ROOT = import.meta.dirname;
-const OUT = path.join(ROOT, 'out');
+const ROOT = WORK;
 
 // --- Copied verbatim from probe-reviews.mjs --------------------------------
 const DIACRITICS = /[ً-ْٰٟـ]/g;
@@ -94,13 +94,7 @@ function compareVersions(a, b) {
 const areaFile = args.find((a) => a.endsWith('.json')) ?? 'areas.json';
 const config = JSON.parse(await fs.readFile(path.join(ROOT, areaFile), 'utf8'));
 
-const files = (await fs.readdir(OUT))
-  .map((f) => f.match(/^(.+)-reviews_(\d{4}-\d{2}-\d{2})_to_(\d{4}-\d{2}-\d{2})\.json$/))
-  .filter(Boolean)
-  .map((m) => ({ file: m[0], span: Date.parse(m[3]) - Date.parse(m[2]), end: m[3] }))
-  .sort((a, b) => b.span - a.span || b.end.localeCompare(a.end));
-if (!files.length) throw new Error('No combined review file in out/. Run fetch-reviews.mjs first.');
-const source = files[0].file;
+const source = await widestCombinedFile();
 
 const docs = JSON.parse(await fs.readFile(path.join(OUT, source), 'utf8'))
   .map((r) => ({ ...r, text: `${r.title ?? ''} ${r.body ?? ''}`.trim() }))

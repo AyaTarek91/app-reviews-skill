@@ -9,6 +9,8 @@
 //
 // Exits 0 either way. The verdict is the output, not the exit code.
 
+import { WORK, loadPlayScraper } from './workdir.mjs';
+
 const TARGETS = [
   { label: 'Google Play', url: 'https://play.google.com/store/apps/details?id=com.google.android.youtube&hl=en&gl=us', domain: 'play.google.com' },
   { label: 'App Store',   url: 'https://itunes.apple.com/search?term=maps&entity=software&limit=1',                    domain: 'itunes.apple.com' },
@@ -21,14 +23,18 @@ const warn = (s) => `  [missing] ${s}`;
 
 line();
 line(`Node ${process.version}  ${process.platform}`);
+// Say the work directory out loud. Config is read from here and every result is
+// written here, so if it is not where the person expects, this is the moment to
+// find out — not after a twenty-minute collection lands somewhere else.
+line(`Working in ${WORK}`);
 line();
 
-let pkg = false;
-try {
-  await import('google-play-scraper');
-  pkg = true;
+// Resolved from the work directory first, the same way fetch-reviews.mjs does
+// it, or this would report "installed" for a package the collector cannot see.
+const pkg = (await loadPlayScraper()) !== null;
+if (pkg) {
   line(ok('google-play-scraper is installed'));
-} catch {
+} else {
   line(warn('google-play-scraper is NOT installed  ->  npm install google-play-scraper'));
 }
 

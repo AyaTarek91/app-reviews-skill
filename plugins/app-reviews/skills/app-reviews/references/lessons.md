@@ -188,3 +188,52 @@ something independently reasonable:
 The strongest single check this pipeline has produced: **528 against 529** — clustering and
 keyword search, sharing no logic, landing one review apart on the same area. Where two
 methods diverge instead, take the smaller number and say which way they disagreed.
+
+---
+
+## 11. The tool wrote its own data into itself
+
+Found by running the finished skill on a second app, in an empty folder, from a session
+that knew nothing about the first app. The whole run appeared to work. The user's folder
+stayed **completely empty** — `app.json`, `areas.json`, `node_modules/` and `out/` had all
+been written into the skill's own directory instead.
+
+It was not the session going off-script. The setup block said `cp scripts/app.example.json
+scripts/app.json`, and every script resolved its paths from `import.meta.dirname`. The
+session did exactly what it was told; the instructions were wrong.
+
+Four consequences, and only the first is obvious:
+
+1. The person who asked for the analysis cannot find it. Their folder is empty and the
+   deliverable is under `~/.claude` where they will never look.
+2. **The second app destroys the first.** `app.json` and `areas.json` are single-slot.
+3. Every read and write is outside the working directory, so each one raises a permission
+   prompt — which reads to a new user as the tool misbehaving.
+4. **A plugin update replaces the skill directory.** Data kept there is destroyed by
+   `claude plugin install`, including collections that took twenty minutes to fetch.
+
+**The rule: the tool is read-only, the working directory is read-write.** Scripts and
+templates live with the skill; config and output live where the user is. `workdir.mjs` is
+the one place that decides this, so no script can drift back.
+
+And the reason it went unnoticed: it was invisible from inside. Every test run until then
+had been made from a session whose working directory *was* the project, where correct and
+broken produce identical results. **A tool cannot test its own file layout from inside
+itself** — that needs a run in an empty folder someone else owns.
+
+The same run surfaced a second, quieter bug. Generalising the filename pattern from one
+app to any app added a capture group at the front:
+
+```
+/^ana-vodafone-reviews_(\d{4}-\d{2}-\d{2})_to_(\d{4}-\d{2}-\d{2})\.json$/
+/^(.+)-reviews_(\d{4}-\d{2}-\d{2})_to_(\d{4}-\d{2}-\d{2})\.json$/
+```
+
+Every group index shifted by one. Three scripts were updated; `cluster-reviews.mjs` was
+not, so it computed its window span from the app's *name* — `Date.parse("ana-vodafone")`,
+which is `NaN`. The sort silently fell through to the tie-breaker and picked the file with
+the latest **start** date: the 30-day pull instead of the six-month one. No error, no
+warning, a valid-looking clustering of a quarter of the data — the exact failure the
+comment directly above it said it was there to prevent. **Adding a capture group renumbers
+every group after it**, and the only defence is one shared implementation, which is now
+`widestCombinedFile()`.

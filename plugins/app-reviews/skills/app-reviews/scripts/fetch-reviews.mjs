@@ -2,23 +2,27 @@
 //
 //   node fetch-reviews.mjs [days] [--ios-only]      default: 30 days
 //
-// The app is defined in app.json beside this script — copy app.example.json and
-// edit it. Nothing about any particular app lives in this file.
+// The app is defined in app.json in the folder you are working in — copy
+// app.example.json and edit it. Nothing about any particular app lives here.
 //
-// Writes raw JSON per store plus a combined UTF-8 CSV into ./out.
+// Writes raw JSON per store plus a combined UTF-8 CSV into ./out, also in the
+// folder you are working in. workdir.mjs explains why that is not beside this file.
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-// Dynamic so a missing dependency produces an instruction, not a stack trace.
-let gplay;
-try {
-  gplay = (await import('google-play-scraper')).default;
-} catch {
+import { WORK, OUT, ensureOut, readWorkConfig, loadPlayScraper } from './workdir.mjs';
+
+// Loaded rather than imported so a missing dependency produces an instruction,
+// not a stack trace — and resolved from the work directory first, because that
+// is where `npm install` was run.
+const gplay = await loadPlayScraper();
+if (!gplay) {
   console.error([
     '',
     'Missing dependency: google-play-scraper',
     '',
     '  Run this once, in the folder you are working in:',
+    `    cd "${WORK}"`,
     '    npm install google-play-scraper',
     '',
     '  It is the only dependency this pipeline has.',
@@ -34,16 +38,7 @@ const IOS_ONLY = args.includes('--ios-only');
 const DAYS = Number(args.find((a) => !a.startsWith('--')) ?? 30);
 
 // --- The app ---------------------------------------------------------------
-const CFG_PATH = path.join(import.meta.dirname, 'app.json');
-let CFG;
-try {
-  CFG = JSON.parse(await fs.readFile(CFG_PATH, 'utf8'));
-} catch {
-  throw new Error(
-    `No app.json beside fetch-reviews.mjs. Copy app.example.json to app.json and fill it in.\n` +
-    `Looked in: ${CFG_PATH}`,
-  );
-}
+const CFG = await readWorkConfig('app.json', 'scripts/app.example.json');
 for (const k of ['slug', 'androidId', 'country']) {
   if (!CFG[k]) throw new Error(`app.json is missing "${k}".`);
 }
@@ -68,7 +63,6 @@ const ANDROID_LANGS = CFG.androidLangs ?? ['en', 'ar', 'fr', 'de', 'tr', 'it', '
 
 const now = new Date();
 const cutoff = new Date(now.getTime() - DAYS * 24 * 60 * 60 * 1000);
-const OUT = path.join(import.meta.dirname, 'out');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -233,8 +227,10 @@ function toCsv(rows) {
   return '﻿' + lines.join('\r\n') + '\r\n'; // BOM so Excel reads Arabic
 }
 
-console.log(`${CFG.name ?? SLUG} reviews since ${cutoff.toISOString().slice(0, 10)} (last ${DAYS} days)\n`);
-await fs.mkdir(OUT, { recursive: true });
+console.log(`${CFG.name ?? SLUG} reviews since ${cutoff.toISOString().slice(0, 10)} (last ${DAYS} days)`);
+// Say where the output is going before spending twenty minutes producing it.
+console.log(`Writing to ${OUT}\n`);
+await ensureOut();
 
 let ios = [];
 if (IOS_ID) {
@@ -271,4 +267,4 @@ console.log(`In range (>= ${cutoff.toISOString().slice(0, 10)}): ${inRange.lengt
 console.log(`  App Store   ${iosIn.length}  avg ${avg(iosIn)}`);
 console.log(`  Google Play ${andIn.length}  avg ${avg(andIn)}`);
 console.log(`  Overall     ${inRange.length}  avg ${avg(inRange)}`);
-console.log(`\nWrote out/${SLUG}-reviews_${stamp}.csv`);
+console.log(`\nWrote ${path.join(OUT, `${SLUG}-reviews_${stamp}.csv`)}`);

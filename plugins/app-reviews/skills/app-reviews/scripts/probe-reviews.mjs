@@ -28,14 +28,14 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { OUT, WORK, widestCombinedFile, readTemplate } from './workdir.mjs';
 
 const args = process.argv.slice(2);
 const MIN_BODY_CHARS = 30; // same cut as cluster-reviews.mjs: below this it is a rating-prompt tap
 const SAMPLES_PER_TERM = 3;
 const SAMPLES_PER_AREA = 8;
 
-const ROOT = import.meta.dirname;
-const OUT = path.join(ROOT, 'out');
+const ROOT = WORK;
 
 // --- Text normalisation ----------------------------------------------------
 // Identical to cluster-reviews.mjs on purpose. If the two disagreed, a review
@@ -99,13 +99,7 @@ if (!Array.isArray(config.areas) || !config.areas.length) {
 // Widest window, not newest name — "07-09" sorts after "02-10", so sorting by
 // filename picks the 30-day pull over the 6-month one. The app-name part of
 // the pattern is loose so this works on any app's output, not just this one.
-const files = (await fs.readdir(OUT))
-  .map((f) => f.match(/^(.+)-reviews_(\d{4}-\d{2}-\d{2})_to_(\d{4}-\d{2}-\d{2})\.json$/))
-  .filter(Boolean)
-  .map((m) => ({ file: m[0], span: Date.parse(m[3]) - Date.parse(m[2]), end: m[3] }))
-  .sort((a, b) => b.span - a.span || b.end.localeCompare(a.end));
-if (!files.length) throw new Error('No combined review file in out/. Run fetch-reviews.mjs first.');
-const source = args.find((a) => /-reviews_.*\.json$/.test(a)) ?? files[0].file;
+const source = args.find((a) => /-reviews_.*\.json$/.test(a)) ?? await widestCombinedFile();
 
 const all = JSON.parse(await fs.readFile(path.join(OUT, source), 'utf8'));
 const docs = all
@@ -303,15 +297,6 @@ await fs.writeFile(path.join(OUT, 'area-probe.json'), JSON.stringify(payload, nu
 // --- Verification page -----------------------------------------------------
 // Embedded, not fetched: a page that fetched its data would show a blank
 // screen when opened from disk by double-click, which is how it gets opened.
-
-// The page template may sit beside this script or in ../templates when the
-// scripts are installed as a skill. Try both rather than making the caller care.
-async function readTemplate(name) {
-  for (const dir of [import.meta.dirname, path.join(import.meta.dirname, "..", "templates")]) {
-    try { return await fs.readFile(path.join(dir, name), "utf8"); } catch { /* try next */ }
-  }
-  throw new Error(`Cannot find ${name} beside the script or in ../templates.`);
-}
 
 const template = await readTemplate('probe-page.html');
 await fs.writeFile(
