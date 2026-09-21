@@ -130,6 +130,13 @@ If the analysis should not live in the current directory, set `APP_REVIEWS_DIR` 
 moving the files. `preflight.mjs` prints the directory it resolved, so check that line
 before starting a long collection.
 
+**Never copy the scripts or templates into the user's folder.** Run them from where the
+skill is installed. The scripts look for `google-play-scraper` in the user's folder first,
+and that works across drives. If preflight prints `[ok] google-play-scraper is installed`,
+the package is found. Believe that line rather than reasoning about module resolution. A
+copied tool never gets fixes, and nothing tells the user it has gone stale. (A test session
+did exactly this, on a wrong guess that the package could not be found from another drive.)
+
 ## Setup
 
 Run these **in the user's folder**, not in the skill's:
@@ -157,6 +164,16 @@ node "$SKILL/scripts/cross-areas.mjs" a.json b.json   # two axes crossed (option
 node "$SKILL/scripts/merge-areas.mjs"        # codebook + probe side by side (optional)
 ```
 
+### Before the collection: say how long it takes
+
+**Tell the user before starting `fetch-reviews.mjs`** that it can take a long time and that
+a quiet terminal is normal. Google Play serves 150 reviews a page with a pause between
+pages, which works out to **roughly a minute for every 5,000 Play reviews**. A small app over
+six months takes a few minutes; an app with hundreds of thousands of reviews takes **an hour
+or more**. Each language prints one line only when it finishes, so the biggest one (usually
+the first) can stay silent for most of the run. Run it in the background and say so. Without
+this warning, a first-time user watches a silent terminal and decides it has hung.
+
 **Clustering and search are opposite tools and you need both.** Clustering answers *"what
 is big in here?"* — it must place every review, so a theme smaller than about one k-th of
 the corpus is absorbed into its nearest neighbour. That is what clustering *is*, not a bug
@@ -167,12 +184,34 @@ to ask.
 ### Naming the clusters
 
 **Do this yourself — do not make the user name 32 groups.** Read each group's top terms and
-samples, name it, and give two groups the same name to merge them. Then show the user the
-result and ask them to correct anything wrong.
+samples, name it, and give two groups the same name to merge them.
 
-Expect roughly, out of 32: **8 clean single topics, 4 holding two crowds, 6 pure emotion,
-13 vague, 1 split by language.** Keep about 8. Tell the user that ratio up front so the
-discard pile is not a surprise.
+**Then stop and hand it to the user. Build nothing on the groups until they have reviewed
+them.** This is a checkpoint, as firm as the defect-or-decision one below. A test session
+named all 32 groups itself and went straight to the dashboard; the review page was built and
+never mentioned. In one message:
+
+1. Give the **full path** to `out/label-clusters.html`. Double-clicking it works.
+2. List your proposed name for each group **by group number**. The page shows each group's
+   raw top words, not your names, so the user needs your list beside it.
+3. Say what to do on the page: rename, put groups in the same area to merge them, tick
+   *needs split*, then press **Export** and move the downloaded codebook into `out/`.
+4. Point out any group you filed as praise or noise whose **average rating or one-star share
+   looks like a complaint**. That is where misfiled complaints hide.
+
+Then wait for the export.
+
+**How many groups survive depends on the app.** On the first app, out of 32: 8 clean single
+topics, 4 holding two crowds, 6 pure emotion, 13 vague, 1 split by language. On a well-liked
+app (Duolingo) only **5 of 32** survived: 26 groups, holding 78% of the reviews, were praise
+with no topic. Tell the user up front to expect somewhere between 5 and 8, so the discard
+pile is not a surprise.
+
+**Then say what clustering missed.** Take the biggest complaint areas from the keyword
+search (`out/area-probe.json`) and name the ones that got no group of their own. On Duolingo,
+subscription & billing (1,225 reviews), bugs (657), support (192) and login (161) got no
+group, while praise filled 26 slots. Clustering found the loud topics; only the search found
+the complaints. Report both.
 
 ### The defect-or-decision checkpoint
 
@@ -205,8 +244,13 @@ Each was a silent wrong answer before it was a rule.
   34k Android, averaging 1.5 and 4.1. Merging erases iOS completely.
 - **Report both denominators.** Over half of Play reviews are one word. The store headline
   largely measures in-app rating-prompt taps, not opinion.
-- **Apple caps at ~100 reviews total**, whatever window you ask for. Always report the date
-  range actually obtained, not the one requested.
+- **Apple's feed stops at 500 reviews at most** (10 pages of 50), whatever window you ask
+  for, and sometimes far fewer. The limit is on **how many, not how far back**, so how much
+  time it covers depends on the app. The first app got 100, covering four and a half of
+  the six months asked for (26 March to 7 August). Duolingo got the full 500, and they covered **three days**
+  (12–15 September) against Play's 180. **Always report the date range actually obtained, not
+  the one requested**, and when it is much shorter, say that the iOS numbers describe only
+  that stretch and cannot be compared with Play over time.
 - **Apple's RSS serves a cached EMPTY feed for some URL shapes**, and which shape breaks
   differs per page. `iosUrlForms()` returns four; empty means "try another shape", never
   "no data". Do not simplify it into one URL.
