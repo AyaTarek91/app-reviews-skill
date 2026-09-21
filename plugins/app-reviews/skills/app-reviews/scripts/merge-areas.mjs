@@ -2,8 +2,10 @@
 //
 //   node merge-areas.mjs
 //
-// Reads out/axis-a-codebook.json (what a human decided) and out/area-probe.json
-// (what a search found) and writes out/merged-areas.json.
+// Reads out/<slug>-codebook.json (what a human decided — the review page names
+// its export after the app) and out/area-probe.json (what a search found) and
+// writes out/merged-areas.json. out/axis-a-codebook.json, the older fixed name,
+// is still read if there is no named one.
 //
 // The two counts disagree, often badly, and that is not an error to reconcile:
 //
@@ -23,9 +25,18 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { OUT } from './workdir.mjs';
 
-
-const book = JSON.parse(await fs.readFile(path.join(OUT, 'axis-a-codebook.json'), 'utf8'));
 const probe = JSON.parse(await fs.readFile(path.join(OUT, 'area-probe.json'), 'utf8'));
+const slug = (probe.source.match(/^(.+)-reviews_/) ?? [])[1];
+const candidates = [`${slug}-codebook.json`, 'axis-a-codebook.json'].map((f) => path.join(OUT, f));
+let book = null;
+for (const file of candidates) {
+  try { book = JSON.parse(await fs.readFile(file, 'utf8')); break; } catch (err) {
+    if (err.code !== 'ENOENT') throw new Error(`Not valid JSON: ${file}\n  ${err.message}`);
+  }
+}
+if (!book) {
+  throw new Error(`No codebook yet. Export it from label-clusters.html and move it into out/.\n  Looked for: ${candidates.join('\n              ')}`);
+}
 
 if (book.source !== probe.source) {
   throw new Error(`Codebook and probe were built from different files (${book.source} vs ${probe.source}). Re-run one of them.`);
@@ -140,7 +151,7 @@ for (const a of areas) {
     pad(a.name, 40) +
       num(a.clustered.reviews, 10) +
       num(a.searched ? a.searched.reviews : '—', 10) +
-      num(a.clustered.avgRating.toFixed(2), 7) +
+      num(a.clustered.avgRating?.toFixed(2) ?? '—', 7) +
       '   ' +
       (a.clustered.needsSplit ? 'NEEDS SPLIT. ' : '') +
       (a.searched ? '' : 'no search equivalent'),
@@ -149,7 +160,7 @@ for (const a of areas) {
 
 console.log('\nCUTS ACROSS AREAS (counted, never a box)');
 for (const c of crossCutting) {
-  console.log(pad(c.name, 40) + num(c.reviews, 10) + num(c.sharePct + '%', 9) + num(c.avgRating.toFixed(2), 7));
+  console.log(pad(c.name, 40) + num(c.reviews, 10) + num(c.sharePct + '%', 9) + num(c.avgRating?.toFixed(2) ?? '—', 7));
 }
 
 console.log('\nONLY SEARCH CAN SEE THESE (too small to cluster)');
@@ -160,7 +171,7 @@ for (const s of smallThemes) {
 console.log(`\nWHAT CHANGED AT ${merged.splitVersion} (ranked by drop)`);
 console.log(pad('topic', 40) + num('before', 9) + num('after', 9) + num('drop', 8));
 for (const r of release) {
-  console.log(pad(r.name, 40) + num(r.before.avgRating.toFixed(2), 9) + num(r.after.avgRating.toFixed(2), 9) + num(r.drop.toFixed(2), 8));
+  console.log(pad(r.name, 40) + num(r.before.avgRating?.toFixed(2) ?? '—', 9) + num(r.after.avgRating?.toFixed(2) ?? '—', 9) + num(r.drop.toFixed(2), 8));
 }
 
 console.log('\nCaveats carried into the output:');

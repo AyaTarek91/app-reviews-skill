@@ -101,7 +101,7 @@
   <div class="sub" id="progresstext"></div>
   <div class="progress"><div id="progressbar" style="width:0"></div></div>
   <button id="importbtn">Import</button>
-  <button class="primary" id="exportbtn">Export Axis A</button>
+  <button class="primary" id="exportbtn">Export codebook</button>
   <input type="file" id="importfile" accept=".json" hidden>
 </header>
 
@@ -112,9 +112,6 @@
     <div class="addrow">
       <input id="newcat" placeholder="New area name" autocomplete="off">
       <button id="addcat">Add</button>
-    </div>
-    <div style="margin-top:13px">
-      <button id="seedbtn" style="width:100%">Add suggested telco areas</button>
     </div>
     <div class="sub" style="margin-top:13px; line-height:1.5">
       Rename a group to what it really is. Put two groups in the same area to
@@ -128,19 +125,33 @@
 
 <script>const DATA = /*__CLUSTER_DATA__*/ null;</script>
 <script>
-const KEY = 'axis-a:' + DATA.source;
-const SEED_AREAS = ['Account & Access', 'Balance & Usage', 'Recharge & Top-up',
-  'Payments & Billing', 'Vodafone Cash', 'Flex', 'Red', 'Offers & Bundles',
-  'eShop', 'Entertainment', 'Notifications', 'Support & Complaints', 'Roaming',
-  'eSIM & SIM', 'Loyalty & Rewards'];
+// Group ids are positions in one clustering run, so saved edits are keyed to the
+// source file AND k. Keyed on the source alone, re-clustering the same file at a
+// different k would reload the old run's edits onto different groups.
+const KEY = 'axis-a:' + DATA.source + ':k' + DATA.params.k;
 
-// Two areas that exist for every app, not just this one: complaints that are
-// not about the app at all, and reviews with nothing in them. Both must be
-// visible and counted, or they quietly contaminate the real areas.
+// Two areas that exist for every app: complaints that are not about the app at
+// all (the network, a teacher, the price of something else), and reviews with
+// nothing in them. Both must be visible and counted, or they quietly
+// contaminate the real areas. Any areas the session proposed (name-groups.mjs)
+// come after them, with its groups already placed, ready to correct.
+const BASE_AREAS = ['No content (praise or venting)', 'Not about the app'];
+const sessionAreas = [...new Set(DATA.clusters.map((c) => c.session_area).filter(Boolean))];
 const DEFAULT_STATE = {
-  categories: ['Not the app (network / pricing)', 'No content (praise or venting)'],
-  assign: {}, names: {}, split: {}, notes: {}
+  categories: [...new Set([...BASE_AREAS, ...sessionAreas])],
+  assign: Object.fromEntries(DATA.clusters.filter((c) => c.session_area).map((c) => [c.id, c.session_area])),
+  names: {}, split: {}, notes: {}
 };
+
+// Every card's trend covers the same months, labelled from the data, so a
+// month with no reviews shows as an empty slot instead of shifting the bars.
+const ALL_MONTHS = [...new Set(DATA.clusters.flatMap((c) => c.months.map((m) => m.month)))].sort();
+const monthName = (m) => new Date(m + '-01T00:00:00Z').toLocaleString('en', { month: 'short', timeZone: 'UTC' });
+const MONTH_RANGE = ALL_MONTHS.length ? `${monthName(ALL_MONTHS[0])} → ${monthName(ALL_MONTHS.at(-1))}` : '';
+
+// The app's slug, from the source filename, so the export can't be mistaken
+// for another app's codebook sitting in the same Downloads folder.
+const SLUG = (DATA.source.match(/^(.+)-reviews_/) ?? [])[1] ?? 'app';
 
 let state;
 try { state = Object.assign({}, DEFAULT_STATE, JSON.parse(localStorage.getItem(KEY) || '{}')); }
@@ -163,7 +174,7 @@ function save() {
   }
 }
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const nameOf = (c) => state.names[c.id] ?? c.suggested_name;
+const nameOf = (c) => state.names[c.id] ?? c.session_name ?? c.suggested_name;
 
 function renderCats() {
   const counts = {};
@@ -189,8 +200,10 @@ function renderCats() {
 }
 
 function sparkline(months) {
-  const max = Math.max(...months.map((m) => m.count), 1);
-  return '<span class="spark">' + months.map((m) =>
+  const byMonth = new Map(months.map((m) => [m.month, m.count]));
+  const full = ALL_MONTHS.map((month) => ({ month, count: byMonth.get(month) ?? 0 }));
+  const max = Math.max(...full.map((m) => m.count), 1);
+  return '<span class="spark">' + full.map((m) =>
     `<i style="height:${Math.max(2, Math.round(m.count / max * 17))}px" title="${m.month}: ${m.count}"></i>`
   ).join('') + '</span>';
 }
@@ -231,7 +244,7 @@ function renderList() {
       <div class="terms">${c.top_terms.map((t) => `<span class="term" dir="auto">${esc(t)}</span>`).join('')}</div>
       <div class="meta">
         <span>Versions: ${versions || '—'}</span>
-        <span>Feb → Aug ${sparkline(c.months)}</span>
+        <span>${MONTH_RANGE} ${sparkline(c.months)}</span>
       </div>
       <div class="controls">
         <select data-assign="${c.id}">${opts}</select>
@@ -277,10 +290,6 @@ document.getElementById('addcat').addEventListener('click', () => {
 });
 document.getElementById('newcat').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') document.getElementById('addcat').click();
-});
-document.getElementById('seedbtn').addEventListener('click', () => {
-  SEED_AREAS.forEach((a) => { if (!state.categories.includes(a)) state.categories.push(a); });
-  save(); render();
 });
 
 document.getElementById('list').addEventListener('change', (e) => {
@@ -335,6 +344,10 @@ document.getElementById('exportbtn').addEventListener('click', () => {
     group_map: DATA.clusters.map((c) => ({
       id: c.id,
       draft_name: c.suggested_name,
+      // What the session proposed, kept beside what the person decided, so it
+      // stays visible which names a human corrected.
+      session_name: c.session_name ?? null,
+      session_area: c.session_area ?? null,
       name: nameOf(c),
       area: state.assign[c.id] ?? null,
       reviews: c.size,
@@ -345,7 +358,7 @@ document.getElementById('exportbtn').addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(codebook, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'axis-a-codebook.json';
+  a.download = `${SLUG}-codebook.json`;
   a.click();
   URL.revokeObjectURL(a.href);
 });

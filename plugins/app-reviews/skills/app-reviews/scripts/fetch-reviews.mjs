@@ -67,10 +67,10 @@ const cutoff = new Date(now.getTime() - DAYS * 24 * 60 * 60 * 1000);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // --- App Store -------------------------------------------------------------
-// Apple's legacy customer-reviews RSS. Caps out around 500 reviews (10 pages
-// x 50) and only covers the one storefront, which is fine here: the app is
-// Egypt-only. The `page=1` + `sortby=mostrecent` URL combination serves a
-// cached empty feed, so page 1 uses the pageless variant instead.
+// Apple's legacy customer-reviews RSS. Stops at 500 reviews at most (10 pages
+// x 50), sometimes far fewer, and covers one storefront. The limit is on COUNT,
+// not time: a busy app's 500 can cover three days, so the date range actually
+// obtained must always be reported.
 // Some URL shapes serve a cached EMPTY feed instead of an error, and which
 // shape breaks differs by page: page=1 fails with sortby, page=2 fails with
 // it too but works without. So try several shapes and take the first that
@@ -186,6 +186,13 @@ async function fetchAndroidLang(lang) {
         url: r.url ?? ''
       });
     }
+    // A big language runs for many minutes, and before this line it printed
+    // nothing until it finished, so a first-time user watched a silent terminal
+    // and decided it had hung. Every 20 pages is roughly every half minute.
+    if ((page + 1) % 20 === 0) {
+      console.log(`    ${lang}: ${out.length.toLocaleString()} so far, back to ${oldest.toISOString().slice(0, 10)}` +
+        ` (stops at ${cutoff.toISOString().slice(0, 10)})`);
+    }
     token = res.nextPaginationToken;
     if (!token) break;
     if (oldest && oldest < cutoff) break; // sorted newest-first
@@ -267,4 +274,16 @@ console.log(`In range (>= ${cutoff.toISOString().slice(0, 10)}): ${inRange.lengt
 console.log(`  App Store   ${iosIn.length}  avg ${avg(iosIn)}`);
 console.log(`  Google Play ${andIn.length}  avg ${avg(andIn)}`);
 console.log(`  Overall     ${inRange.length}  avg ${avg(inRange)}`);
+// Apple's cap is on how many, not how far back, so say what stretch of time the
+// App Store numbers actually describe. Duolingo's 500 covered three days of a
+// 180-day window; reported as "App Store, last 180 days" that is simply false.
+if (iosIn.length) {
+  const dates = iosIn.map((r) => r.date).sort();
+  const spanDays = Math.max(1, Math.round((Date.parse(dates.at(-1)) - Date.parse(dates[0])) / 86_400_000));
+  console.log(`\nApp Store covers ${dates[0].slice(0, 10)} to ${dates.at(-1).slice(0, 10)}: ${spanDays} of the ${DAYS} days asked for.`);
+  if (spanDays < DAYS / 10) {
+    console.log('  Apple stops at 500 reviews, so for this app they cover only that stretch. Report the');
+    console.log('  App Store numbers as describing those days, and never compare them with Play over time.');
+  }
+}
 console.log(`\nWrote ${path.join(OUT, `${SLUG}-reviews_${stamp}.csv`)}`);

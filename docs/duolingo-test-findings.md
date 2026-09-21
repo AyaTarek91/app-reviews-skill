@@ -47,7 +47,7 @@ happens, `APP_REVIEWS_DIR` overrides it, and `preflight.mjs` prints the folder i
 `15c3477`, pushed. A bug found while fixing it: `cluster-reviews.mjs` was silently reading the
 30-day file instead of the 6-month one. That is fixed in the same commit.
 
-### 2. The clusters were never shown to the user
+### 2. The clusters were never shown to the user — FIXED
 
 **What happened:** the session named the 32 groups itself, as the skill says to do, and then
 went straight to the dashboard. `label-clusters.html` was built and never mentioned. The user
@@ -67,7 +67,7 @@ checkpoint: give the full path, say what to do on the page, and wait for the exp
 `cluster-reviews.mjs` take a file of suggested names so the page opens pre-filled with the
 session's names instead of raw words.
 
-### 3. 32 groups is too few for this many reviews
+### 3. 32 groups is too few for this many reviews — FIXED
 
 **What happened:** the skill treats 32 groups as a fixed number. That number was tuned on Ana
 Vodafone's 7,773 reviews. Duolingo had 18,058 clustered, so the average group held 564 reviews
@@ -103,7 +103,7 @@ on the app: a happy app like Duolingo spends most of its groups on praise. Tell 
 check the keyword search's biggest complaint areas against the groups and say which ones got no
 group.
 
-### 4. The review page still has Ana Vodafone built into it
+### 4. The review page still has Ana Vodafone built into it — FIXED
 
 **What happened:** `templates/label-page.html` was never made general.
 - A button reads **"Add suggested telco areas"** and adds *Recharge & Top-up, Vodafone Cash,
@@ -118,7 +118,7 @@ group.
 **Proposed fix:** take the suggested areas and the "not the app" label from `app.json`, with an
 empty default. Build the month label from the months in the data.
 
-### 5. The export filename can pick up the wrong app's file
+### 5. The export filename can pick up the wrong app's file — FIXED
 
 **What happened:** the page always saves as `axis-a-codebook.json`. The Downloads folder already
 held Ana Vodafone's codebook from 4 September, so the browser saved Duolingo's as
@@ -129,7 +129,7 @@ read the **other app's** codebook without any warning.
 `merge-areas.mjs` check that the codebook's `source` field matches the reviews file. It already
 refuses a mismatch; the filename just needs to stop inviting one.
 
-### 6. The session wrongly decided the package couldn't be found and copied the tool
+### 6. The session wrongly decided the package couldn't be found and copied the tool — FIXED (text)
 
 **What happened:** the session said the scripts, installed on drive E:, could not find
 `google-play-scraper` installed in the user's folder on drive C:. It copied `scripts\` and
@@ -147,7 +147,7 @@ nothing says it has gone out of date.
 package is found; never copy the scripts into the user's folder, run them where they are
 installed.
 
-### 7. Nothing says how long collection takes
+### 7. Nothing says how long collection takes — FIXED
 
 **What happened:** the 180-day collection took many minutes with a quiet terminal. One earlier
 session warned the user without being told to; this one did not. The warning happens only when
@@ -157,7 +157,7 @@ a session thinks of it, because the skill does not mention it.
 that a quiet terminal is normal. Have `fetch-reviews.mjs` print progress lines for Google Play
 often enough that it never looks frozen.
 
-### 8. "Apple caps at about 100 reviews" is wrong
+### 8. "Apple caps at about 100 reviews" is wrong — FIXED
 
 **What happened:** the App Store returned **500 reviews**, all dated **12–15 September 2026:
 3 days**. Google Play gave 331,970 over the full 180 days.
@@ -200,3 +200,57 @@ language separately.
 - **Keyword-search coverage is 31%** (5,891 of 19,071 reviews matched at least one area),
   against 46% on Ana Vodafone with hand-tuned Arabic word lists. That's expected for untuned
   lists, and the dashboard must report it. It is not a bug.
+
+---
+
+## Fix pass, 21 September
+
+What was changed for each finding, and how it was checked.
+
+- **2. Groups never shown:** SKILL.md makes the review a hard stop. New `name-groups.mjs` reads
+  the session's names and proposed areas from `out/group-names.json` and rebuilds the page
+  with them filled in. It refuses a names file written for a different run (a different
+  source file or group count), because group ids are positions in one run. Tested: a names
+  file for k=32 against a k=72 run is refused with both runs named.
+- **3. Group count:** `cluster-reviews.mjs` now sets the count at about 250 reviews per group,
+  between 32 and 120, and prints the smallest theme that can still win a group. Tested on
+  both apps. **Ana Vodafone** still gets 32, and its `clusters.json` is **identical** to the
+  saved reference. **Duolingo English** gets 72, and a subscription group appears (274
+  reviews, 2.61 average, 43% one-star), along with "doesn't work" (377), "waste of time"
+  (356) and AI complaints (302, 2.77 average), none of which had a group at 32. Runs in 25
+  seconds.
+- **4. Ana Vodafone in the page:** telco button and its 15 areas removed. The preset area is
+  now "Not about the app". The month label and trend bars come from the data ("Mar → Sep"),
+  with empty months shown as gaps. Saved edits are keyed to the source file *and* the group
+  count, so re-clustering at a new count cannot reload the old run's edits onto different
+  groups.
+- **5. Export filename:** now `<slug>-codebook.json` (`duolingo-us-en-codebook.json`).
+  `merge-areas.mjs` looks for that name first and the old `axis-a-codebook.json` second, and
+  says where it looked when it finds neither.
+- **6. Copying the tool:** SKILL.md text only: believe preflight's `[ok]`, never copy the
+  scripts.
+- **7. Collection time:** SKILL.md warns before the fetch starts. `fetch-reviews.mjs` prints a
+  progress line every 20 pages. Tested live: two lines in 75 seconds, at about 6,000 reviews
+  a minute, which matches the estimate in SKILL.md.
+- **8. Apple:** corrected in SKILL.md, the collector's comment and the Ana
+  Vodafone CLAUDE.md. `fetch-reviews.mjs` now prints the dates the App Store reviews cover
+  against the days asked for, and warns when that's under a tenth of the window. **Not tested
+  live:** the App Store returned no reviews at all during the test (see below).
+
+## Found during the fix pass
+
+- **9. `merge-areas.mjs` crashed on an area with no reviews — FIXED.** The user's codebook
+  kept the preset "Not the app" area empty, and printing its rating (`null`) threw. Ana
+  Vodafone never had an empty area, so it never showed. Every rating print now shows "—"
+  when there is none.
+- **10. `merge-areas.mjs` still assumes the Ana Vodafone setup — OPEN.** On Duolingo it prints
+  "Split at version null", and every area reads "no search equivalent". It joins the
+  codebook to the search through a `codebookArea` field in `areas.json` that nothing tells
+  the session to fill in, and it expects a known break version. It is marked optional in
+  the pipeline, but it should say what it needs instead of printing a table of dashes.
+- **11. The stores behaved differently on 21 September — OPEN, not investigated.** A 4-day
+  English-only Play fetch got nothing in the window: the newest review returned was dated
+  10 September, where the same collector reached 16 September five days earlier. The App
+  Store returned no rows from any URL shape. The change being tested only adds print lines,
+  so this comes from the stores' side (possibly throttling after the 330k-review pull).
+  Worth re-checking before the next full run.

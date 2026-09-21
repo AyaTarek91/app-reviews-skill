@@ -88,6 +88,17 @@ export async function readTemplate(name) {
   throw new Error(`Template not found: ${name}\n  Looked in: ${SKILL}\n  and: ${TEMPLATES}`);
 }
 
+// Build the group-review page with the data baked in. A page that fetched
+// clusters.json would work from a web server and silently show nothing when
+// opened by double-clicking, which is how the reader will actually open it.
+export async function writeLabelPage(data) {
+  const template = await readTemplate('label-page.html');
+  const embedded = JSON.stringify(data).replace(/</g, '\\u003c'); // can't end the script tag early
+  const file = path.join(OUT, 'label-clusters.html');
+  await fs.writeFile(file, template.replace('/*__CLUSTER_DATA__*/ null', embedded), 'utf8');
+  return file;
+}
+
 // `npm install google-play-scraper` runs in the folder the person is working in,
 // so that is where the package will be. A bare import resolves from THIS file
 // instead, walking up from the skill folder, and would miss it — which is how you

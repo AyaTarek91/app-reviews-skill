@@ -149,6 +149,15 @@ was destroyed was resolution: *update* got welded to *login*, and *balance*, *bu
 it high, expect junk, discard by hand. Merging two piles is typing the same name twice;
 un-merging is impossible.
 
+**The other direction, found on the second app:** "high" is relative to the corpus. Duolingo
+clustered 18,058 reviews at the same k=32, so the smallest group held 263 and anything
+smaller could not get a group. The user kept 5 of the 32; praise filled 26. Subscription
+complaints — 1,225 reviews by search, bigger than any group kept — had no group, nor did
+bugs, support or login. Re-run at k=72 (about 250 reviews per group), a subscription group
+appeared, along with "doesn't work", "waste of time" and AI complaints. **k is now set from the
+corpus size by default**, never below 32, and the script prints the smallest theme that can
+still win a group.
+
 ---
 
 ## 8. Adding overlapping counts inflated a number by 40%

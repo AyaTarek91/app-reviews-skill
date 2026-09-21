@@ -157,7 +157,8 @@ Still from the user's folder:
 node "$SKILL/scripts/preflight.mjs"          # what does this environment allow? run first
 node "$SKILL/scripts/find-app.mjs" "app name" eg   # resolve store ids from a name
 node "$SKILL/scripts/fetch-reviews.mjs" 180  # collect. --ios-only reuses the saved Play pull
-node "$SKILL/scripts/cluster-reviews.mjs"    # group by topic, k=30 default
+node "$SKILL/scripts/cluster-reviews.mjs"    # group by topic; group count set from review count
+node "$SKILL/scripts/name-groups.mjs"        # put YOUR names on the review page, then hand it over
 node "$SKILL/scripts/probe-reviews.mjs"      # search the named areas, reports zeros too
 node "$SKILL/scripts/version-areas.mjs"      # every area by release train
 node "$SKILL/scripts/cross-areas.mjs" a.json b.json   # two axes crossed (optional)
@@ -170,9 +171,12 @@ node "$SKILL/scripts/merge-areas.mjs"        # codebook + probe side by side (op
 a quiet terminal is normal. Google Play serves 150 reviews a page with a pause between
 pages, which works out to **roughly a minute for every 5,000 Play reviews**. A small app over
 six months takes a few minutes; an app with hundreds of thousands of reviews takes **an hour
-or more**. Each language prints one line only when it finishes, so the biggest one (usually
-the first) can stay silent for most of the run. Run it in the background and say so. Without
-this warning, a first-time user watches a silent terminal and decides it has hung.
+or more**. The collector prints a progress line about every half minute; tell the user
+that is what to watch. Run it in the background and say so. Without this warning, a
+first-time user watches a slow terminal and decides it has hung.
+
+When it finishes, it prints the **dates the App Store reviews actually cover**. Repeat that
+line to the user. For a busy app it will be a few days, not the window asked for.
 
 **Clustering and search are opposite tools and you need both.** Clustering answers *"what
 is big in here?"* — it must place every review, so a theme smaller than about one k-th of
@@ -181,37 +185,49 @@ in it. Search answers *"is X in here at all?"* — you name the areas, it report
 **including zero**. Clustering misses what is small; search misses what you did not think
 to ask.
 
+**The number of groups is set from the number of reviews** — about 250 reviews per group,
+never fewer than 32 — and the script prints the smallest theme that can still win a group.
+Do not pass a number unless you have a reason. A fixed 32 was tuned on 7.8k reviews; on
+Duolingo's 18k it left subscription complaints (1,225 reviews by search) without a group of
+their own. At the 72 the rule gives, subscription, "doesn't work", "waste of time" and AI
+complaints each got a group.
+
 ### Naming the clusters
 
-**Do this yourself — do not make the user name 32 groups.** Read each group's top terms and
-samples, name it, and give two groups the same name to merge them.
+**Do this yourself — do not make the user name every group.** Read each group's top terms
+and samples in `out/clusters.json`, name it, and propose an area for it; groups given the
+same area are merged. Write that to `out/group-names.json` (the format is at the top of
+`name-groups.mjs`) and run `name-groups.mjs`. It rebuilds the review page with your names
+and areas filled in. Without it, the page shows raw top words and your names never reach
+the user.
 
 **Then stop and hand it to the user. Build nothing on the groups until they have reviewed
 them.** This is a checkpoint, as firm as the defect-or-decision one below. A test session
-named all 32 groups itself and went straight to the dashboard; the review page was built and
-never mentioned. In one message:
+named all the groups itself and went straight to the dashboard; the review page was built
+and never mentioned. In one message:
 
 1. Give the **full path** to `out/label-clusters.html`. Double-clicking it works.
-2. List your proposed name for each group **by group number**. The page shows each group's
-   raw top words, not your names, so the user needs your list beside it.
-3. Say what to do on the page: rename, put groups in the same area to merge them, tick
-   *needs split*, then press **Export** and move the downloaded codebook into `out/`.
+2. Say your names and areas are already on the page, ready to correct.
+3. Say what to do there: rename, move groups between areas (same area = merged), tick
+   *needs split*, then press **Export codebook** and move the downloaded
+   `<slug>-codebook.json` into `out/`.
 4. Point out any group you filed as praise or noise whose **average rating or one-star share
-   looks like a complaint**. That is where misfiled complaints hide.
+   looks like a complaint**. That is where misfiled complaints hide. On Duolingo the biggest
+   group of all (1,567 reviews) was filed as praise at a 3.22 average with 28% one-star.
 
 Then wait for the export.
 
 **How many groups survive depends on the app.** On the first app, out of 32: 8 clean single
 topics, 4 holding two crowds, 6 pure emotion, 13 vague, 1 split by language. On a well-liked
-app (Duolingo) only **5 of 32** survived: 26 groups, holding 78% of the reviews, were praise
-with no topic. Tell the user up front to expect somewhere between 5 and 8, so the discard
-pile is not a surprise.
+app (Duolingo, at 32) only **5** survived: 26 groups, holding 78% of the reviews, were praise
+with no topic. Tell the user up front that most groups will be discarded, and that a happy
+app discards more, so the pile is not a surprise.
 
 **Then say what clustering missed.** Take the biggest complaint areas from the keyword
-search (`out/area-probe.json`) and name the ones that got no group of their own. On Duolingo,
-subscription & billing (1,225 reviews), bugs (657), support (192) and login (161) got no
-group, while praise filled 26 slots. Clustering found the loud topics; only the search found
-the complaints. Report both.
+search (`out/area-probe.json`) and name the ones that got no group of their own. On Duolingo
+at 32 groups, subscription & billing (1,225 reviews), bugs (657), support (192) and login
+(161) got none, while praise filled 26 slots. Clustering finds the loud topics; the search
+finds what you asked about. Report both.
 
 ### The defect-or-decision checkpoint
 

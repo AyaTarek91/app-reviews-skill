@@ -1,9 +1,10 @@
 // Group substantive reviews into candidate product areas (draft Axis A).
 //
-//   node cluster-reviews.mjs [k]           default: 30 clusters
+//   node cluster-reviews.mjs [k]           default: set from the number of reviews
 //
-// Reads the newest combined file in ./out and writes out/clusters.json, which
+// Reads the widest combined file in ./out and writes out/clusters.json, which
 // the labelling page reads so a human can merge, rename and split the groups.
+// To put your own names on the page, run name-groups.mjs afterwards.
 //
 // No ML library on this machine and no Python, so this is plain TF-IDF plus
 // spherical k-means (k-means on cosine distance). 7.8k short documents is
@@ -14,10 +15,20 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { OUT, WORK, readWorkConfig, widestCombinedFile, readTemplate } from './workdir.mjs';
+import { OUT, readWorkConfig, widestCombinedFile, writeLabelPage } from './workdir.mjs';
 
 const args = process.argv.slice(2);
-const K = Number(args.find((a) => /^\d+$/.test(a)) ?? 30);
+const K_ASKED = args.find((a) => /^\d+$/.test(a));
+// Clustering must place every review, so a theme smaller than about one k-th
+// of the corpus cannot win a group of its own. A fixed k therefore gets coarser
+// as the corpus grows: 32 was right for 7.8k reviews, but on 18k (Duolingo) the
+// smallest group was 263 and subscription, bugs and support complaints — 1,225,
+// 657 and 192 reviews by search — got no group at all, while praise filled 26
+// of the 32. At 72 the subscription group appeared. So by default aim for about
+// this many reviews per group, and never go below 32.
+const REVIEWS_PER_GROUP = 250;
+const MIN_K = 32;
+const MAX_K = 120;
 // Reviews shorter than this are the rating-prompt taps (ممتاز, "good"). Over
 // half of Play reviews land here and they carry no topic at all.
 const MIN_BODY_CHARS = 30;
@@ -350,7 +361,15 @@ const useVecs = placeable.map((i) => vectors[i]);
 const noTopicAvg = noTopic.length
   ? (noTopic.reduce((s, i) => s + docs[i].rating, 0) / noTopic.length).toFixed(2) : 'n/a';
 console.log(`Clusterable: ${placeable.length}`);
-console.log(`No topic (verdict only): ${noTopic.length}, avg rating ${noTopicAvg}\n`);
+console.log(`No topic (verdict only): ${noTopic.length}, avg rating ${noTopicAvg}`);
+
+const K = K_ASKED
+  ? Number(K_ASKED)
+  : Math.min(MAX_K, Math.max(MIN_K, Math.round(placeable.length / REVIEWS_PER_GROUP)));
+// Say out loud what this k cannot see, so nobody reads a missing theme as an
+// absent one. The keyword search (probe-reviews.mjs) is what finds those.
+console.log(`Groups: ${K}${K_ASKED ? ' (as asked)' : ` (about ${REVIEWS_PER_GROUP} reviews each)`}` +
+  ` — a theme under about ${Math.round(placeable.length / K)} reviews cannot win a group of its own\n`);
 
 let best = null;
 for (let r = 0; r < RESTARTS; r++) {
@@ -425,17 +444,7 @@ const out = {
 };
 await fs.writeFile(path.join(OUT, 'clusters.json'), JSON.stringify(out, null, 2), 'utf8');
 
-// Build the labelling page with the data baked in. A page that fetched
-// clusters.json would work from a web server and silently show nothing when
-// opened by double-clicking, which is how the reader will actually open it.
-
-const template = await readTemplate('label-page.html');
-const embedded = JSON.stringify(out).replace(/</g, '\\u003c'); // can't end the script tag early
-await fs.writeFile(
-  path.join(OUT, 'label-clusters.html'),
-  template.replace('/*__CLUSTER_DATA__*/ null', embedded),
-  'utf8'
-);
+await writeLabelPage(out);
 
 console.log('size   ios  avg  1★    name');
 for (const c of report) {
@@ -445,4 +454,6 @@ for (const c of report) {
   );
 }
 console.log(`\nWrote out/clusters.json`);
-console.log('Wrote out/label-clusters.html  — open it to name, merge and split these groups');
+console.log(`Wrote ${path.join(OUT, 'label-clusters.html')}`);
+console.log('  Name the groups, then run name-groups.mjs to put your names on that page');
+console.log('  before handing it to the person. Group ids are positions in THIS run.');

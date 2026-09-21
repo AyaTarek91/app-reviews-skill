@@ -94,7 +94,8 @@ npm install google-play-scraper
 node preflight.mjs                 # what does this environment allow? run this first
 node find-app.mjs "app name" eg    # resolve store ids from a name — always confirm the hit
 node fetch-reviews.mjs 180         # collect. --ios-only reuses the saved Play pull
-node cluster-reviews.mjs           # group by topic
+node cluster-reviews.mjs           # group by topic; group count set from review count
+node name-groups.mjs               # put the session's names on the review page
 node probe-reviews.mjs             # search named areas, reports zeros too
 node version-areas.mjs             # every area by release train
 node cross-areas.mjs a.json b.json # two axes crossed (optional)
