@@ -157,13 +157,24 @@ Still from the user's folder:
 node "$SKILL/scripts/preflight.mjs"          # what does this environment allow? run first
 node "$SKILL/scripts/find-app.mjs" "app name" eg   # resolve store ids from a name
 node "$SKILL/scripts/fetch-reviews.mjs" 180  # collect. --ios-only reuses the saved Play pull
-node "$SKILL/scripts/cluster-reviews.mjs"    # group by topic; group count set from review count
-node "$SKILL/scripts/name-groups.mjs"        # put YOUR names on the review page, then hand it over
+
+# --- grouping runs twice; the second run is the one you report ---------------
+node "$SKILL/scripts/cluster-reviews.mjs"    # first pass — working material, never the deliverable
 node "$SKILL/scripts/probe-reviews.mjs"      # search the named areas, reports zeros too
+node "$SKILL/scripts/drop-noise.mjs" --auto  # set aside what NEITHER method finds a topic in
+#   ^ STOP: show the person both piles and wait for a yes before the line below
+node "$SKILL/scripts/cluster-reviews.mjs" --exclude out/drop-ids.json --prefix pass2
+node "$SKILL/scripts/name-groups.mjs" group-names.json --prefix pass2   # then hand THAT page over
+
 node "$SKILL/scripts/version-areas.mjs"      # every area by release train
 node "$SKILL/scripts/cross-areas.mjs" a.json b.json   # two axes crossed (optional)
 node "$SKILL/scripts/merge-areas.mjs"        # codebook + probe side by side (optional)
 ```
+
+**The first clustering is a stage, not a result.** Its job is to show which piles say
+nothing, so they can be set aside. Everything you name, hand over, chart or report comes
+from `pass2`. Never present the first pass's groups as findings, and never build the
+dashboard on them.
 
 ### Two settings the optional steps need
 
@@ -211,19 +222,24 @@ complaints each got a group.
 
 ### Naming the clusters
 
+**Name the second pass, not the first.** The first pass exists to find the piles that say
+nothing; run the search and `drop-noise.mjs` before naming anything, then name the groups in
+`out/pass2-clusters.json`. Naming the first pass wastes the work: those ids do not survive
+the second run.
+
 **Do this yourself — do not make the user name every group.** Read each group's top terms
-and samples in `out/clusters.json`, name it, and propose an area for it; groups given the
-same area are merged. Write that to `out/group-names.json` (the format is at the top of
-`name-groups.mjs`) and run `name-groups.mjs`. It rebuilds the review page with your names
-and areas filled in. Without it, the page shows raw top words and your names never reach
-the user.
+and samples, name it, and propose an area for it; groups given the same area are merged.
+Write that to `out/group-names.json` (the format is at the top of `name-groups.mjs`) and run
+`name-groups.mjs group-names.json --prefix pass2`. It rebuilds the review page with your
+names and areas filled in. Without it, the page shows raw top words and your names never
+reach the user.
 
 **Then stop and hand it to the user. Build nothing on the groups until they have reviewed
 them.** This is a checkpoint, as firm as the defect-or-decision one below. A test session
 named all the groups itself and went straight to the dashboard; the review page was built
 and never mentioned. In one message:
 
-1. Give the **full path** to `out/label-clusters.html`. Double-clicking it works.
+1. Give the **full path** to `out/pass2-label-clusters.html`. Double-clicking it works.
 2. Say your names and areas are already on the page, ready to correct.
 3. Say what to do there: rename, move groups between areas (same area = merged), tick
    *needs split*, then press **Export codebook** and move the downloaded
@@ -234,17 +250,94 @@ and never mentioned. In one message:
 
 Then wait for the export.
 
-**How many groups survive depends on the app.** On the first app, out of 32: 8 clean single
-topics, 4 holding two crowds, 6 pure emotion, 13 vague, 1 split by language. On a well-liked
-app (Duolingo, at 32) only **5** survived: 26 groups, holding 78% of the reviews, were praise
-with no topic. Tell the user up front that most groups will be discarded, and that a happy
-app discards more, so the pile is not a surprise.
+**How many groups survive depends on the app — and this is why grouping runs twice.** On a
+FIRST pass over the reference app, out of 32: 8 clean single topics, 4 holding two crowds,
+6 pure emotion, 13 vague, 1 split by language. On a well-liked app (Duolingo, at 32) only
+**5** survived: 26 groups, holding 78% of the reviews, were praise with no topic. After the
+second pass on the reference app, 22 of 24 groups were topics the keyword search recognises.
+Tell the user that the first grouping throws most of its groups away — a happy app throws
+away more — and that the numbers they will see come from the second one.
 
 **Then say what clustering missed.** Take the biggest complaint areas from the keyword
 search (`out/area-probe.json`) and name the ones that got no group of their own. On Duolingo
 at 32 groups, subscription & billing (1,225 reviews), bugs (657), support (192) and login
 (161) got none, while praise filled 26 slots. Clustering finds the loud topics; the search
 finds what you asked about. Report both.
+
+### Grouping runs twice — and the second run is the analysis
+
+**This is the default method, not a refinement of it.** Emotion is not noise around the
+signal in a review corpus, it *is* the bulk of it, so on a first pass it wins most of the
+groups — 6 of 32 on the reference app, 26 of 32 on a well-liked one. Lowering k does not
+fix that; it only costs resolution. So: group once to find the piles that say nothing, set
+those aside, and group again.
+
+```bash
+node "$SKILL/scripts/drop-noise.mjs"                    # propose: nothing is written
+node "$SKILL/scripts/drop-noise.mjs" --auto             # or --groups 0,3,5, or --area "No content"
+node "$SKILL/scripts/cluster-reviews.mjs" --exclude out/drop-ids.json --prefix pass2
+node "$SKILL/scripts/name-groups.mjs" group-names.json --prefix pass2
+```
+
+`--auto` needs no human input: it takes every group the keyword search recognises in under
+a quarter of its members. Use `--area` instead when a person has already filed the first
+pass's groups and you want their judgement rather than the threshold.
+
+**The rule is: drop a review only when NEITHER method finds a topic in it.** Clustering
+put it in a group that says nothing, *and* the keyword search matches none of your areas.
+Anything either method recognises stays. `drop-noise.mjs` enforces that — you hand it
+groups, it hands back only the members the search cannot see, and it prints both piles
+with three examples each before it writes anything.
+
+**Then stop and show the person what is about to be set aside.** This is a checkpoint, not
+a status line: they are the only one who can tell you that the "contentless" pile is full of
+ordinary complaints in a dialect your word list missed. In one short message give them the
+two piles as the script prints them — how many, each pile's average rating, one-star share
+and median length, and three real examples from each — and wait for a yes before grouping
+again. What you are asking is: *"does the set-aside pile really say nothing, and does the
+kept pile look like complaints?"*
+
+Two things make the answer obvious when it is wrong. The kept pile should be clearly
+**angrier and longer** than the set-aside pile; if it is not, the search terms are wrong.
+And the set-aside pile should be a large share of the corpus but not most of it — the script
+warns past 60%. A search that recognises almost nothing turns this step into "delete the
+complaints", so treat a suspicious split as a vocabulary problem and go back to
+`out/area-probe.html` rather than proceeding.
+
+**Never drop a whole group, however obviously it is venting.** On the reference app the
+group a person had filed as praise-and-venting held 4,066 reviews, and the search found a
+real topic in **1,240** of them — 2.37 average, 58% one-star, 290 of them detailed
+complaints over 120 characters. They had been filed as venting because their *vocabulary*
+is angry ("thieves", "scammers", "they steal the balance"), not because they say nothing.
+Dropping the group whole deleted **billing and trust** — 831 reviews by search, 1.88
+average, 73% one-star, the second-largest problem area in the corpus — from the topic map
+completely. It owned no group before the second pass and three after it.
+
+What the second pass bought on that app, measured by how much of each group the
+independent keyword search recognises:
+
+| | groups | search recognises | groups it barely recognises |
+|---|---|---|---|
+| first pass, k=32 | 32 | 47% of reviews | 6 (1,037 reviews, averaging 3.7–4.6) |
+| drop the group whole | 24 | 65% | 0 — but billing is gone |
+| **drop only what neither sees** | 24 | 74% | 0 |
+
+**The set-aside reviews stay in every denominator.** "Half of substantive reviews carry no
+topic at all" is a finding about the channel, and a sharper topic map must not hide it. The
+headline numbers — both store averages, the written-review average, the release comparison —
+are computed over the whole corpus exactly as before. What the second pass changes is only
+which reviews get grouped into topics.
+
+**One report, from the second pass.** Do not publish the first pass's groups anywhere, and do
+not build a page that sets the two passes side by side unless the person asks for that
+specifically: it puts the method in front of the findings, and the reader has to work out
+which numbers are live. Report the areas, the counts and the release comparison from
+`pass2`, and say in the method section that grouping ran twice and why.
+
+Two more things to say out loud. The group ids from the second pass are new — a codebook
+exported against the first pass does not carry over. And the search rescues a few reviews it
+should not, because a complaint word can appear in a compliment; that is the cheap side of
+the trade, and the examples in the output make it visible.
 
 ### The defect-or-decision checkpoint
 
@@ -308,6 +401,9 @@ Each was a silent wrong answer before it was a rule.
   *update* and *balance* to *bundles*. **Lowering k removes resolution, not noise.**
 - **Reviews left with no surviving term are a bucket, not a rounding error.** Report them
   separately; a high average rating inside that bucket is the tell.
+- **Group twice.** The first grouping finds the piles that say nothing; the reported grouping
+  is the second one, over the corpus with those reviews set aside. A first-pass group is never
+  a finding. See "Grouping runs twice" above for the rule and what it costs to get it wrong.
 
 ### Searching
 
@@ -352,18 +448,27 @@ edit the copy. Replace the data arrays near the top of its script
 (`MONTHS`, `TRAINS`, `KINDS`) and the tile and table numbers in the markup. Keep the shape:
 
 1. **Tiles** — store score, written-only score, the other store, % saying nothing, break version
-2. **Monthly lines** — all reviews against written only, gap shaded
+2. **Monthly lines** — all reviews against written only, gap shaded. **One store only**, the
+   one with the volume; the other store's score goes in a tile and is never averaged in
 3. **Release bars** — score per release train, break line marked
-4. **Horizontal bars** — the seven kinds by volume, red above 65% one-star
+4. **Horizontal bars** — the areas by volume, red above 60% one-star
 5. **Dumbbell** — before and after the break, sorted by how far each fell
-6. **Sparklines** — each kind across releases, grey comparison line behind
+6. **Sparklines** — each area across releases, grey comparison line behind
 7. **Three small panels** — the two-way count check, what the channel cannot see, questions for analytics
-8. **Method** — the four steps, and why k is set high
+8. **Method** — grouping ran twice and why, and how the areas were named
+
+**The areas are the second pass's areas** (from the codebook the person exported against
+`pass2`), so each review sits in exactly one and the counts sum. Say that under the bars —
+and if you also show keyword counts anywhere, say those overlap and must not be added. One
+page, one pass: do not put the two passes side by side unless the person asks for a
+comparison.
 
 Chart rules: **one y-scale per chart, never two** — rating and percentage in one frame can
 be made to show almost any relationship. Numbers at 17px. Colours from CSS tokens so a theme
 change redraws. Counts inside bars where they fit. Check every label position by arithmetic;
-the geometry is hand-written and there is no layout engine to catch a collision.
+the geometry is hand-written and there is no layout engine to catch a collision — a row label
+longer than its track runs off the frame, and an area with one scorable release must not be
+drawn as a trend.
 
 **Naming: one dashboard per app, in `dashboards/`, named after the app** in both the
 filename and the `<title>` — `dashboards/<slug>-dashboard.html`, titled "<App> Reviews

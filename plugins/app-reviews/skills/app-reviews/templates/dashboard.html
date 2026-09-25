@@ -230,11 +230,12 @@
           </div>
         </div>
         <figure class="chart-wrap">
-          <svg id="bars" viewBox="0 0 700 372" role="img" aria-label="Review counts for seven kinds of problem, with average rating and one-star share"></svg>
+          <svg id="bars" viewBox="0 0 700 372" role="img" aria-label="Review counts for each area, with average rating and one-star share"></svg>
           <div class="tip" id="bars-tip"></div>
         </figure>
-        <p class="note" style="margin-top:10px">Counts overlap — a review can be in several rows.
-          Never add them.</p>
+        <p class="note" style="margin-top:10px">These are grouped counts: each review sits in one
+          area only, so they add up to the regrouped total. Keyword counts, wherever this page shows
+          them, overlap and must never be added.</p>
       </div>
 
       <div class="panel">
@@ -250,7 +251,7 @@
           <span class="key"><i class="dot" style="background:var(--red)"></i>After</span>
         </div>
         <figure class="chart-wrap">
-          <svg id="dumbbell" viewBox="0 0 700 344" role="img" aria-label="Average rating before and after release 2026.4.3 for seven kinds of problem"></svg>
+          <svg id="dumbbell" viewBox="0 0 700 344" role="img" aria-label="Average rating before and after the break release for each area"></svg>
           <div class="tip" id="db-tip"></div>
         </figure>
         <p class="note" style="margin-top:10px">Not a randomised test — fast updaters may differ from slow ones.</p>
@@ -361,29 +362,36 @@
     <div class="grid">
 
       <div class="panel">
-        <h3 style="margin-bottom:12px">Four steps</h3>
+        <h3 style="margin-bottom:12px">Five steps</h3>
         <ol class="tight" style="padding-left:20px">
-          <li><strong>Collected</strong> 34,461 reviews from both stores over six months. 7,929 had
-            more than a few words; the rest were rating-prompt taps.</li>
-          <li><strong>A computer grouped them into 32 piles</strong> by shared words. It was given no
-            word list and knows nothing about the app — it only sees which reviews sound alike.</li>
-          <li><strong>A person read all 32 and named them.</strong> Piles given the same name merged.
-            About 8 were clean topics; the rest were emotion, vague complaints, or split by language.</li>
-          <li><strong>Then searched by keyword</strong> for each named area, to catch themes too
-            small for a pile.</li>
+          <li><strong>Collected</strong> every review from both stores over the window. Only those with
+            more than a few words are analysed; the rest are rating-prompt taps.</li>
+          <li><strong>A computer grouped them by shared words.</strong> It was given no word list and
+            knows nothing about the app — it only sees which reviews sound alike.</li>
+          <li><strong>Searched by keyword</strong> for each named problem area, to catch themes too
+            small to win a group.</li>
+          <li><strong>Set aside the reviews neither method could find a topic in</strong> — grouped
+            into a pile that says nothing, and matching none of the search words. They stay in every
+            denominator; they are only out of the topic map.</li>
+          <li><strong>Grouped again, and a person named these groups.</strong> Groups given the same
+            name merged. The areas above come from that second grouping.</li>
         </ol>
       </div>
 
       <div class="panel">
-        <h3 style="margin-bottom:12px">Why 32 piles for 7 areas</h3>
-        <p class="take"><b>Deliberately more piles than areas.</b> Merging two piles is typing the
-          same name twice. Splitting one is impossible — so the setting is always too many, never too
-          few.</p>
-        <p class="take" style="margin-top:12px">Tested it: rerunning with only 10 piles did not
-          remove the noise. It jammed <em>login</em> together with <em>update</em>, and
-          <em>balance</em> with <em>bundles</em>. <b>Fewer piles lose the topics, not the noise.</b></p>
-        <p class="take" style="margin-top:12px">The keyword search exists because a pile needs about
-          240 reviews to survive. <b>Accessibility had 4.</b> Grouping alone would never have shown it.</p>
+        <h3 style="margin-bottom:12px">Why it is grouped twice</h3>
+        <p class="take"><b>Praise and venting are most of what people write</b>, so on a first grouping
+          they win most of the groups and the real topics are squeezed out. Setting them aside and
+          grouping again is what frees the slots.</p>
+        <p class="take" style="margin-top:12px">Fewer groups is not the fix. Tested: rerunning with 10
+          instead of 32 still gave praise groups, and it jammed <em>login</em> together with
+          <em>update</em>. <b>Fewer groups lose the topics, not the noise.</b></p>
+        <p class="take" style="margin-top:12px">A review is only set aside when <b>neither</b> method
+          finds a topic in it. On the reference app, the pile a person had filed as venting held 1,240
+          real complaints — 58% one-star — and dropping it whole would have erased the second-largest
+          problem area in the corpus.</p>
+        <p class="take" style="margin-top:12px">The keyword search stays because a group needs roughly
+          250 reviews to survive. <b>Accessibility had 4.</b> Grouping alone would never have shown it.</p>
       </div>
 
     </div>

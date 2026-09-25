@@ -91,10 +91,12 @@ export async function readTemplate(name) {
 // Build the group-review page with the data baked in. A page that fetched
 // clusters.json would work from a web server and silently show nothing when
 // opened by double-clicking, which is how the reader will actually open it.
-export async function writeLabelPage(data) {
+// A second pass over a subset passes its own name here, so the first pass's
+// page stays on disk beside it instead of being overwritten.
+export async function writeLabelPage(data, name = 'label-clusters.html') {
   const template = await readTemplate('label-page.html');
   const embedded = JSON.stringify(data).replace(/</g, '\\u003c'); // can't end the script tag early
-  const file = path.join(OUT, 'label-clusters.html');
+  const file = path.join(OUT, name);
   await fs.writeFile(file, template.replace('/*__CLUSTER_DATA__*/ null', embedded), 'utf8');
   return file;
 }

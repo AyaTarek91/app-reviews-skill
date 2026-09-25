@@ -1,10 +1,26 @@
 // Group substantive reviews into candidate product areas (draft Axis A).
 //
 //   node cluster-reviews.mjs [k]           default: set from the number of reviews
+//   node cluster-reviews.mjs --exclude out/drop-ids.json --prefix pass2
 //
 // Reads the widest combined file in ./out and writes out/clusters.json, which
 // the labelling page reads so a human can merge, rename and split the groups.
 // To put your own names on the page, run name-groups.mjs afterwards.
+//
+// It also writes out/cluster-members.json — which review ids landed in which
+// group. That is kept OUT of clusters.json because clusters.json is embedded in
+// the review page, and tens of thousands of ids would bloat a page someone
+// opens by double-clicking. drop-noise.mjs reads it.
+//
+// Two options exist for a second pass over a subset (see drop-noise.mjs):
+//
+//   --exclude <file>   drop these review ids BEFORE the vocabulary is built.
+//                      That is the whole point: the words of the reviews you
+//                      drop stop competing for term weights, and the groups get
+//                      rebuilt out of what is left.
+//   --prefix <name>    write out/<name>-clusters.json and
+//                      out/<name>-label-clusters.html instead of the defaults,
+//                      so the first pass stays on disk beside the second.
 //
 // No ML library on this machine and no Python, so this is plain TF-IDF plus
 // spherical k-means (k-means on cosine distance). 7.8k short documents is
@@ -19,6 +35,12 @@ import { OUT, readWorkConfig, widestCombinedFile, writeLabelPage } from './workd
 
 const args = process.argv.slice(2);
 const K_ASKED = args.find((a) => /^\d+$/.test(a));
+const flagValue = (name) => {
+  const i = args.indexOf(name);
+  return i >= 0 ? args[i + 1] : null;
+};
+const EXCLUDE_FILE = flagValue('--exclude');
+const PREFIX = flagValue('--prefix');
 // Clustering must place every review, so a theme smaller than about one k-th
 // of the corpus cannot win a group of its own. A fixed k therefore gets coarser
 // as the corpus grows: 32 was right for 7.8k reviews, but on 18k (Duolingo) the
@@ -330,12 +352,29 @@ function monthSpread(rows) {
 // --- Driver ----------------------------------------------------------------
 // Pick the widest window, not the newest name. Sorting the filenames picks
 // the 30-day pull over the 6-month one, because "07-09" sorts after "02-10".
-const source = args.find((a) => a.endsWith('.json')) ?? await widestCombinedFile();
+// The exclude list is a .json path too, so it has to be ruled out here or it
+// becomes the source file and the run reads out/out/whatever.
+const source = args.find((a) => a.endsWith('.json') && a !== EXCLUDE_FILE) ?? await widestCombinedFile();
 const all = JSON.parse(await fs.readFile(path.join(OUT, source), 'utf8'));
 
-const docs = all
+let docs = all
   .map((r) => ({ ...r, text: `${r.title ?? ''} ${r.body ?? ''}`.trim() }))
   .filter((r) => r.text.length > MIN_BODY_CHARS);
+
+// Report how many of the listed ids actually matched. A list built from a
+// different run, or a different corpus, would drop nothing at all and still
+// look like a finished second pass.
+let excluded = null;
+if (EXCLUDE_FILE) {
+  const raw = JSON.parse(await fs.readFile(path.resolve(EXCLUDE_FILE), 'utf8'));
+  const ids = new Set(Array.isArray(raw) ? raw : raw.ids ?? []);
+  if (!ids.size) throw new Error(`No ids in ${EXCLUDE_FILE}. Expected a JSON array of review ids, or {"ids": [...]}.`);
+  const before = docs.length;
+  docs = docs.filter((r) => !ids.has(r.review_id));
+  excluded = { file: path.basename(EXCLUDE_FILE), listed: ids.size, dropped: before - docs.length, kept: docs.length };
+  if (!excluded.dropped) throw new Error(`None of the ${ids.size} listed ids are in ${source}. Wrong source file, or ids from another corpus.`);
+  console.log(`Excluding ${excluded.dropped} of ${ids.size} listed reviews: ${before} substantive -> ${docs.length}`);
+}
 
 const iosTotal = all.filter((r) => r.store === 'App Store').length;
 const playTotal = all.length - iosTotal;
@@ -429,6 +468,7 @@ const out = {
     all_reviews: all.length, play: playTotal, ios: iosTotal,
     substantive: docs.length, clustered: placeable.length, no_topic: noTopic.length
   },
+  ...(excluded ? { excluded } : {}),
   no_topic: {
     size: noTopic.length,
     avg_rating: Number(noTopicAvg) || 0,
@@ -442,9 +482,22 @@ const out = {
   },
   clusters: report
 };
-await fs.writeFile(path.join(OUT, 'clusters.json'), JSON.stringify(out, null, 2), 'utf8');
+const clusterFile = PREFIX ? `${PREFIX}-clusters.json` : 'clusters.json';
+const membersFile = PREFIX ? `${PREFIX}-cluster-members.json` : 'cluster-members.json';
+const pageFile = PREFIX ? `${PREFIX}-label-clusters.html` : 'label-clusters.html';
 
-await writeLabelPage(out);
+await fs.writeFile(path.join(OUT, clusterFile), JSON.stringify(out, null, 2), 'utf8');
+
+// Which reviews are in which group, in a file of its own. Any join back to the
+// reviews needs this: the second pass, and a real two-axis cross-tab.
+await fs.writeFile(path.join(OUT, membersFile), JSON.stringify({
+  generated: out.generated,
+  source,
+  params: out.params,
+  groups: clusters.map((cl) => ({ id: cl.id, review_ids: cl.members.map((m) => docs[m.doc].review_id) })),
+}), 'utf8');
+
+await writeLabelPage(out, pageFile);
 
 console.log('size   ios  avg  1★    name');
 for (const c of report) {
@@ -453,7 +506,7 @@ for (const c of report) {
     `${String(Math.round(c.one_star_share * 100)).padStart(3)}%  ${c.suggested_name}`
   );
 }
-console.log(`\nWrote out/clusters.json`);
-console.log(`Wrote ${path.join(OUT, 'label-clusters.html')}`);
+console.log(`\nWrote out/${clusterFile} and out/${membersFile}`);
+console.log(`Wrote ${path.join(OUT, pageFile)}`);
 console.log('  Name the groups, then run name-groups.mjs to put your names on that page');
 console.log('  before handing it to the person. Group ids are positions in THIS run.');

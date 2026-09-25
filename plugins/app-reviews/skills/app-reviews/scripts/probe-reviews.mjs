@@ -164,6 +164,9 @@ const sample = (r) => ({
 // --- Run each area ---------------------------------------------------------
 const results = [];
 const matchedAny = new Set();
+// One entry per area, in the same order as results. Written to a file of its
+// own so area-probe.json keeps its shape for the page and merge-areas.mjs.
+const areaIds = [];
 
 for (const area of config.areas) {
   const terms = (area.terms ?? []).map(buildMatcher);
@@ -189,6 +192,7 @@ for (const area of config.areas) {
 
   const rows = [...hits.values()];
   for (const r of rows) matchedAny.add(r.review_id);
+  areaIds.push(rows.map((r) => r.review_id));
 
   const versions = splitVersion
     ? {
@@ -293,6 +297,17 @@ const payload = {
 };
 
 await fs.writeFile(path.join(OUT, 'area-probe.json'), JSON.stringify(payload, null, 2));
+
+// The ids behind the counts, beside the counts. "How many reviews mention this"
+// is what the page shows; "which reviews" is what any join needs — drop-noise.mjs
+// asks this file whether a review has a topic in it at all.
+await fs.writeFile(path.join(OUT, 'area-probe-ids.json'), JSON.stringify({
+  generated: payload.generated,
+  source,
+  areaFile,
+  matchedAny: [...matchedAny],
+  areas: results.map((a, i) => ({ name: a.name, kind: a.kind, ids: areaIds[i] })),
+}), 'utf8');
 
 // --- Verification page -----------------------------------------------------
 // Embedded, not fetched: a page that fetched its data would show a blank

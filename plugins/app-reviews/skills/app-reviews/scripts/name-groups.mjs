@@ -1,6 +1,12 @@
 // Put your names for the groups onto the review page before the person sees it.
 //
 //   node name-groups.mjs [names.json]      default: out/group-names.json
+//   node name-groups.mjs names.json --prefix pass2
+//
+// --prefix names a clustering run other than the first: it reads
+// out/<prefix>-clusters.json and rebuilds out/<prefix>-label-clusters.html. The
+// second pass is the run you report, so that is the normal case here, not the
+// exception.
 //
 // cluster-reviews.mjs builds out/label-clusters.html with each group's raw top
 // words as its name ("don / words / doesn"). You are meant to name the groups
@@ -32,7 +38,13 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { OUT, writeLabelPage } from './workdir.mjs';
 
-const namesFile = path.resolve(OUT, process.argv[2] ?? 'group-names.json');
+const args = process.argv.slice(2);
+const prefixAt = args.indexOf('--prefix');
+const PREFIX = prefixAt >= 0 ? args[prefixAt + 1] : null;
+const namesArg = args.find((a) => a.endsWith('.json'));
+const namesFile = path.resolve(OUT, namesArg ?? 'group-names.json');
+const clusterFile = PREFIX ? `${PREFIX}-clusters.json` : 'clusters.json';
+const pageFile = PREFIX ? `${PREFIX}-label-clusters.html` : 'label-clusters.html';
 
 const readJson = async (file, hint) => {
   try {
@@ -44,7 +56,7 @@ const readJson = async (file, hint) => {
   }
 };
 
-const data = await readJson(path.join(OUT, 'clusters.json'), 'Run cluster-reviews.mjs first.');
+const data = await readJson(path.join(OUT, clusterFile), PREFIX ? 'Run cluster-reviews.mjs with the same --prefix first.' : 'Run cluster-reviews.mjs first.');
 const names = await readJson(namesFile, 'Write your group names there first — the format is at the top of name-groups.mjs.');
 
 if (names.source !== data.source || Number(names.k) !== data.params.k) {
@@ -57,7 +69,7 @@ if (names.source !== data.source || Number(names.k) !== data.params.k) {
 
 const byId = new Map(data.clusters.map((c) => [String(c.id), c]));
 const unknown = Object.keys(names.groups ?? {}).filter((id) => !byId.has(id));
-if (unknown.length) throw new Error(`No group with id ${unknown.join(', ')} in clusters.json (ids run 0–${data.params.k - 1}).`);
+if (unknown.length) throw new Error(`No group with id ${unknown.join(', ')} in ${clusterFile} (ids run 0–${data.params.k - 1}).`);
 
 for (const c of data.clusters) {
   const entry = names.groups?.[String(c.id)];
@@ -67,7 +79,7 @@ for (const c of data.clusters) {
   if (area) c.session_area = String(area).trim();
 }
 
-const page = await writeLabelPage(data);
+const page = await writeLabelPage(data, pageFile);
 
 // Echo the result by area, so what the person is about to see is also on record here.
 const areas = new Map();

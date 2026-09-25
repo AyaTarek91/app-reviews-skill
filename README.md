@@ -94,9 +94,11 @@ npm install google-play-scraper
 node preflight.mjs                 # what does this environment allow? run this first
 node find-app.mjs "app name" eg    # resolve store ids from a name — always confirm the hit
 node fetch-reviews.mjs 180         # collect. --ios-only reuses the saved Play pull
-node cluster-reviews.mjs           # group by topic; group count set from review count
-node name-groups.mjs               # put the session's names on the review page
+node cluster-reviews.mjs           # first pass — working material, not the result
 node probe-reviews.mjs             # search named areas, reports zeros too
+node drop-noise.mjs --auto         # set aside what NEITHER method finds a topic in
+node cluster-reviews.mjs --exclude out/drop-ids.json --prefix pass2   # the reported grouping
+node name-groups.mjs group-names.json --prefix pass2   # names on the page, then hand it over
 node version-areas.mjs             # every area by release train
 node cross-areas.mjs a.json b.json # two axes crossed (optional)
 node merge-areas.mjs               # human codebook + probe, side by side (optional)
@@ -108,6 +110,13 @@ the corpus is absorbed into its nearest neighbour. Search answers *"is X in here
 you name the areas and it reports every count including zero. Clustering misses what is
 small; search misses what you did not think to ask.
 
+**And what both of them miss is noise — so grouping runs twice.** On a well-liked app most groups come back as
+praise with no topic, and they take the slots the real problems needed. `drop-noise.mjs`
+removes the reviews that clustering and search BOTH fail to find a topic in, so a second
+pass can run over the rest. It never drops a whole group: on the reference app the pile a
+person had filed as venting held 1,240 real complaints, 58% of them one-star, and dropping
+it whole erased the second-largest problem area in the corpus.
+
 ## Layout
 
 ```
@@ -116,7 +125,7 @@ plugins/app-reviews/
   .claude-plugin/plugin.json           the plugin manifest
   skills/app-reviews/
     SKILL.md                           the skill itself
-    scripts/                           preflight, collector, five analysis scripts
+    scripts/                           preflight, collector, the analysis scripts
     templates/                         areas template, dashboard, two review pages
     references/lessons.md              the full failure catalogue
 build-zip.mjs                          builds dist/app-reviews.zip for claude.ai / Cowork

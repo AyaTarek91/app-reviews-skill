@@ -274,3 +274,35 @@ The same failure in one line: **the difference between "we looked and there is n
 there" and "we never looked" has to survive to the output.** It is the rule behind
 reporting a search term that matched nothing, and behind reporting coverage — applied here
 to the tool's own configuration instead of to the data.
+
+## 13. The venting pile was the billing complaints
+
+The idea was sound: half the corpus is praise and venting, it wins most of the groups, so
+drop it and cluster what is left. Run that way, it works — 24 groups, every one of them a
+topic, no praise group at all, and the share of reviews the independent keyword search also
+recognises went from 47% to 65%.
+
+**Then look at what went in the bin.** Of the 4,066 reviews a person had filed as
+praise-and-venting, the search found a real topic in **1,240**: 2.37 average, 58% one-star,
+and 290 of them one-star reviews over 120 characters long. Wallet cashback never credited.
+Balance deducted after a bundle ended. A year-long dispute over a frozen wallet.
+
+They were filed as venting because of their vocabulary, not their content. In Egyptian
+Arabic a stolen-balance complaint is written *"شركه حراميه ونصابه"* — "a company of thieves
+and scammers" — and it clusters with rage, not with money. Dropping the group whole deleted
+**billing and trust** from the topic map: 831 reviews by search, 1.88 average, 73% one-star,
+the second-largest problem area in the corpus. It owned no group before, and none after the
+naive drop.
+
+**The rule that survives: drop a review only when NEITHER method finds a topic in it.**
+Clustering says its group says nothing AND the search matches none of your areas. That left
+2,826 to drop — 3.68 average, 27% one-star, median length 51 characters, samples that are
+literally "excellent excellent excellent". Re-clustered, 22 of 24 groups were ones the
+search recognises, coverage rose to 74%, and billing won three groups of its own.
+
+Two methods disagreeing is not a problem to resolve by picking one. Here the disagreement
+*is* the filter: what both of them miss is noise, and what either of them catches is signal.
+
+And the number that must not disappear: the 2,826 are still in the denominators. A cleaner
+topic map does not make half the corpus stop being contentless — it just stops that half
+from deciding what the map looks like.
