@@ -246,3 +246,31 @@ warning, a valid-looking clustering of a quarter of the data — the exact failu
 comment directly above it said it was there to prevent. **Adding a capture group renumbers
 every group after it**, and the only defence is one shared implementation, which is now
 `widestCombinedFile()`.
+
+## 12. A missing setting that read as a finding
+
+On the second app, `merge-areas.mjs` printed `Split at version null` and a table whose
+searched column was a row of dashes, every line annotated *"no search equivalent — this
+area is a product of how the reviews were grouped, not a topic people write about."*
+
+Every word of that was a conclusion about the data. None of it was true. The script needs
+two things that nothing had asked anyone to set:
+
+- `"splitVersion"` in `areas.json`, so there is a before and an after. The version where
+  the score breaks is found by `version-areas.mjs` — but finding it is not the same as
+  writing it back into the file, and nothing said to.
+- a link between the two axes. The codebook's areas are named by a person on the review
+  page; the search areas are named in `areas.json`. On the first app someone had quietly
+  filled in a `codebookArea` field on every area. On any other app the two sets of names
+  have nothing in common, so nothing joins.
+
+**The rule: a script that needs a setting must name the setting.** Silence and a dash look
+identical to a measured zero, and the reader has no way to tell which one they are holding.
+`merge-areas.mjs` now joins on the area name first, says how many areas joined and by which
+route, prints both lists of names and the exact line to add when nothing matches, and skips
+the release table entirely — with a sentence saying why — when no break version is set.
+
+The same failure in one line: **the difference between "we looked and there is nothing
+there" and "we never looked" has to survive to the output.** It is the rule behind
+reporting a search term that matched nothing, and behind reporting coverage — applied here
+to the tool's own configuration instead of to the data.

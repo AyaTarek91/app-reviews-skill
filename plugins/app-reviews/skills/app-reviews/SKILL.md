@@ -165,6 +165,23 @@ node "$SKILL/scripts/cross-areas.mjs" a.json b.json   # two axes crossed (option
 node "$SKILL/scripts/merge-areas.mjs"        # codebook + probe side by side (optional)
 ```
 
+### Two settings the optional steps need
+
+Both live in `areas.json`, and neither is filled in for you. Set them when you reach the
+step that uses them, and say so when you skip one — an empty column is not a finding.
+
+- **`"splitVersion"`** turns the release comparison on. Run `version-areas.mjs` first, read
+  which version the score breaks at, then write that version into `areas.json` and re-run
+  `probe-reviews.mjs`. Left unset, the probe has no before and no after, and `merge-areas`
+  prints no release table — it will tell you that is why.
+- **`"codebookArea"`** links the two axes. `merge-areas.mjs` prints the clustered count
+  beside the searched one and joins them on the **area name**. The names typed on the
+  review page almost never match the names in `areas.json` by accident, so either use the
+  same names on both sides or add `"codebookArea": "<the name from the page>"` to the
+  matching area. When nothing joins, the script prints both lists of names and the line to
+  add. Areas with no counterpart can stay unlinked — a search area that never won a group
+  of its own is a finding in itself.
+
 ### Before the collection: say how long it takes
 
 **Tell the user before starting `fetch-reviews.mjs`** that it can take a long time and that
@@ -322,6 +339,9 @@ Each was a silent wrong answer before it was a rule.
   people, not the worst release.
 - **A rolled-up column can straddle the break.** `2026.4` held both `2026.4.1` (3.42) and
   `2026.4.3` (2.20). Say so, or the blend reads as a gentle slope instead of a cliff.
+- **Write the break back into `areas.json` as `"splitVersion"`.** Finding it in
+  `version-areas.mjs` output is not the same as telling the other scripts about it. Until
+  it is in the file, the probe splits nothing and every before/after in the pack is missing.
 - **State the caveat every time:** users are not randomly assigned to versions. People who
   update fast may differ from people who do not.
 

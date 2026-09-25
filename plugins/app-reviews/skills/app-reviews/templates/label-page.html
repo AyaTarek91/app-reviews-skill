@@ -318,12 +318,28 @@ document.getElementById('exportbtn').addEventListener('click', () => {
     const members = DATA.clusters.filter((c) => state.assign[c.id] === cat);
     const size = members.reduce((s, c) => s + c.size, 0);
     const rated = members.reduce((s, c) => s + c.avg_rating * c.size, 0);
+    const oneStar = members.reduce((s, c) => s + c.one_star_share * c.size, 0);
     return {
       name: cat,
       reviews: size,
       ios_reviews: members.reduce((s, c) => s + c.ios, 0),
       avg_rating: size ? Number((rated / size).toFixed(2)) : null,
-      groups: members.map((c) => ({ id: c.id, name: nameOf(c), reviews: c.size }))
+      // The one-star share travels with the average, never without it. An
+      // average alone hides a floor effect: an area already sitting near 2.0
+      // cannot fall much further, and only the one-star share shows that.
+      one_star_share: size ? Number((oneStar / size).toFixed(3)) : null,
+      groups: members.map((c) => ({
+        id: c.id,
+        name: nameOf(c),
+        reviews: c.size,
+        avg_rating: c.avg_rating,
+        one_star_share: c.one_star_share,
+        // Ticked here, so it has to leave here. The ids also go out in
+        // needs_split below, but a reader of one area should not have to
+        // cross-reference a list at the other end of the file.
+        needs_split: !!state.split[c.id],
+        note: state.notes[c.id] ?? ''
+      }))
     };
   });
 

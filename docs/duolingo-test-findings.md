@@ -243,14 +243,33 @@ What was changed for each finding, and how it was checked.
   kept the preset "Not the app" area empty, and printing its rating (`null`) threw. Ana
   Vodafone never had an empty area, so it never showed. Every rating print now shows "—"
   when there is none.
-- **10. `merge-areas.mjs` still assumes the Ana Vodafone setup — OPEN.** On Duolingo it prints
-  "Split at version null", and every area reads "no search equivalent". It joins the
-  codebook to the search through a `codebookArea` field in `areas.json` that nothing tells
-  the session to fill in, and it expects a known break version. It is marked optional in
-  the pipeline, but it should say what it needs instead of printing a table of dashes.
-- **11. The stores behaved differently on 21 September — OPEN, not investigated.** A 4-day
-  English-only Play fetch got nothing in the window: the newest review returned was dated
-  10 September, where the same collector reached 16 September five days earlier. The App
-  Store returned no rows from any URL shape. The change being tested only adds print lines,
-  so this comes from the stores' side (possibly throttling after the 330k-review pull).
-  Worth re-checking before the next full run.
+- **10. `merge-areas.mjs` assumed the Ana Vodafone setup — FIXED 25 September.** On Duolingo
+  it printed "Split at version null" and a searched column of dashes, each line annotated
+  "no search equivalent — this area is a product of how the reviews were grouped". That is a
+  conclusion about the data, and it was really two settings nobody had been told to set: a
+  `codebookArea` link between the two axes, and a `splitVersion` for the before/after.
+  The script now joins the codebook to the search **on the area name** first, so matching
+  names need no configuration at all, and falls back to an explicit `codebookArea`. It
+  reports how many areas joined and by which route, names the ones that did not on both
+  sides, prints the exact line to add when nothing joins, and skips the release table with
+  a sentence saying why when no break version is set. `areas.template.json` documents
+  `codebookArea`; SKILL.md now has a "Two settings the optional steps need" section and a
+  rule to write the break version back into `areas.json` after running `version-areas.mjs`.
+  Two more things surfaced in the fix: the review page never exported the one-star share
+  (so the merged file could only ever carry averages — a floor effect with nothing to
+  reveal it), and it exported the *needs split* ticks only as a list of ids at the other end
+  of the file, so `merge-areas` never printed NEEDS SPLIT even when boxes were ticked. Both
+  now travel with each area. Verified against the Ana Vodafone data from a scratch folder in
+  three states: names that do not match (says so, and why), names linked by `codebookArea`
+  (4 of 8 joined, the other 4 named on both sides), and no `splitVersion` (release section
+  gone, replaced by what to run and what to set).
+- **11. The stores behaved differently on 21 September — CLOSED 25 September, transient.** On
+  the 21st a 4-day English-only Play fetch returned nothing newer than 10 September and the
+  App Store returned no rows from any URL shape. Re-run today against Ana Vodafone (ar + en,
+  5-day window): **both stores are current.** Play returned 450 reviews, 264 inside the
+  window, newest 24 September; the App Store returned 50 entries covering 21–24 September.
+  Nothing in the collector was changed between the two runs, so the 21 September behaviour
+  was on the stores' side — most likely throttling after the 330k-review pull that preceded
+  it. The collector's own coverage line worked as designed on the re-run: "App Store covers
+  2026-09-21 to 2026-09-24: 3 of the 5 days asked for." **Carry the habit, not the alarm:** a
+  fetch that comes back short is worth re-running before it is treated as a defect.
